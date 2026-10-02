@@ -23,6 +23,7 @@ export class SemanticAnalyzer {
   constructor(){ this.global=new Scope(null,"global"); this.functionTypes=new Map(); }
   analyze(program){
     this.predeclareFunctions(program.body,this.global);
+    for(const s of program.body) if(s.type==="ImportDecl"){ if(this.global.names.has(s.alias)) throw new GlopSemanticError(`Duplicate declaration of "${s.alias}" in the same scope`,"DUPLICATE_DECLARATION"); this.global.declare(s.alias,{kind:"module",type:TYPE.OBJECT}); }
     for(const s of program.body)this.statement(s,this.global);
     return program;
   }
@@ -36,6 +37,8 @@ export class SemanticAnalyzer {
   }
   statement(n,scope){
     switch(n.type){
+      case "ImportDecl": if(scope!==this.global) throw new GlopSemanticError("STEAL is only allowed at module scope","IMPORT_SCOPE"); return;
+      case "ExportDecl": if(scope!==this.global) throw new GlopSemanticError("FLEX is only allowed at module scope","EXPORT_SCOPE"); for(const name of n.names) if(!scope.resolve(name)) throw new GlopSemanticError(`Cannot FLEX undefined name "${name}"`,"EXPORT_UNDEFINED"); return;
       case "VarDecl": { const type=this.expression(n.value,scope); scope.declare(n.name,{kind:"variable",type}); return; }
       case "FunctionDecl": {
         const fn=new Scope(scope,"function");

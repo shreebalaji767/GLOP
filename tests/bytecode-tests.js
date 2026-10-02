@@ -3,6 +3,7 @@ import { lex } from "../src/lexer.js";
 import { parse } from "../src/parser.js";
 import { compileBytecode } from "../src/bytecode-compiler.js";
 import { runBytecode } from "../src/vm.js";
+import { encodeGBC } from "../src/gbc.js";
 
 const execute=source=>{const output=[];const result=runBytecode(compileBytecode(parse(lex(source))),{output:value=>output.push(value)});return{output,result}};
 
@@ -26,6 +27,11 @@ assert.deepEqual(execute("WIZARD fact(n){ SUS n<=1 { YEET 1 } YEET n*BONK fact(n
 assert.deepEqual(execute("WIZARD makeCounter(start){ GLOP x=start WIZARD inc(){ x+=1 YEET x } YEET inc } GLOP counter=BONK makeCounter(10) YAP BONK counter() YAP BONK counter()").output,[11,12]);
 assert.deepEqual(execute("WIZARD outer(a){ WIZARD middle(){ WIZARD inner(){ YEET a } YEET inner } YEET BONK middle()() } YAP BONK outer(42)").output,[42]);
 assert.deepEqual(execute("WIZARD makePair(start){ GLOP x=start WIZARD inc(){ x+=1 YEET x } WIZARD read(){ YEET x } YEET inc } GLOP f=BONK makePair(3) YAP BONK f() YAP BONK f()").output,[4,5]);
+const closureAst=parse(lex("WIZARD outer(a){ WIZARD middle(){ WIZARD inner(){ YEET a } YEET inner } YEET BONK middle()() }"));
+const closureBC=compileBytecode(closureAst);
+assert.equal(encodeGBC(closureBC).subarray(0,4).toString("ascii"),"GBC2");
+assert.equal(closureBC.functions[0].freeNames?.length??0,0);
+assert.equal(closureBC.functions[0].functions[0].freeNames[0],"a");
 
 assert.throws(()=>execute("WIZARD add(a,b){ YEET a+b } YAP BONK add(1)").output,/expected 2 argument/);
 assert.throws(()=>execute("OOPSIE «UNHANDLED»"),/UNHANDLED/);

@@ -75,3 +75,14 @@ The dependency-free native runtime now includes:
 Native examples are part of CI, including the system API and core standard-library smoke tests.
 
 These are native GLOP runtime functions, not calls into Node.js, Python, or another language runtime.
+
+
+### Native CLI
+
+The standalone executable supports:
+- `glop program.glop` — execute a program.
+- `glop check program.glop` — lex and parse without executing.
+- `glop --version` — print the native runtime version.
+- `glop --help` — show usage and built-ins.
+
+This keeps the development toolchain language-owned: a user running the native executable does not need Node.js, Python, Java, or another language runtime.

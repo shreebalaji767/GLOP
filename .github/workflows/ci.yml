@@ -27,5 +27,6 @@ jobs:
       - run: ./build/native/glop examples/native-stdlib.glop
       - run: ./build/native/glop examples/native-features.glop
       - run: ./build/native/glop examples/native-system.glop
+      - run: ./build/native/glop examples/native-core.glop
       - run: node src/cli.js build examples/hello.glop -o build/hello.gbc
       - run: ./build/native/glop-runtime build/hello.gbc

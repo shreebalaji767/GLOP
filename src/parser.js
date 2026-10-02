@@ -52,6 +52,15 @@ export class Parser{
   }
   return node("Call",{callee,args});
  }
+ postfix(e){
+  for(;;){
+   if(this.check("(")){e=this.finishCall(e);continue}
+   if(this.match("[")){const index=this.expression();this.expect("]");e=node("Index",{object:e,index});continue}
+   if(this.match(".")){e=node("Member",{object:e,property:this.expect("identifier").value});continue}
+   break
+  }
+  return e
+ }
  primary(){
   const t=this.peek();
 

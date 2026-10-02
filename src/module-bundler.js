@@ -122,6 +122,7 @@ export class ModuleBundler {
     // Dependencies are initialized exactly once, in dependency-before-dependent
     // order. Their namespace objects are passed into factory parameters.
     for (const record of this.order) {
+      if (record === entry) continue;
       const args = record.imports.map(({ dep }) => node("Identifier", { name: dep.namespaceName }));
       body.push(node("VarDecl", {
         name: record.namespaceName,

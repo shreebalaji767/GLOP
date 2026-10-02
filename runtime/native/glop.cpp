@@ -475,6 +475,8 @@ static std::string readFile(const std::string&f){std::ifstream in(f);if(!in)thro
 }
 
 
+static bool gPlainDiagnostics=false;
+
 static std::string chaosDiagnostic(const std::string& message, bool plain=false){
   if(plain) return "GLOP ERROR: "+message;
   std::string code="GLOP-E9999",cat="[CHAOS ENGINE]",what="Something went sideways with great confidence.",
@@ -502,25 +504,32 @@ static void printChaosSuccess(const std::string&what, bool plain=false){
 
 int main(int argc,char**argv){
   try{
-    bool plain=false; for(int ai=1;ai<argc;++ai) if(std::string(argv[ai])=="--plain") plain=true;
-    if(argc<2 || std::string(argv[1])=="--help" || std::string(argv[1])=="-h"){
-      std::cout<<"GLOP 0.7.0 native runtime — CHAOS MODE ENABLED\n";
-      std::cout<<"usage: glop <program.glop> [args...]\n";
-      std::cout<<"       glop check <program.glop>\n";
-      std::cout<<"       glop --version\n";
-      std::cout<<"built-ins: LEN PUSH POP TYPE INSTANCEOF ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS HAS KEYS RANGE NUMBER ARGS TIME_MS SLEEP_MS ENV CWD JOIN_PATH MIN MAX POW CLAMP ASSERT REPEAT TRIM REPLACE SPLIT JOIN\n";
-      std::cout<<"diagnostics: chaotic by default; use --plain for boring machine-friendly output\n";
-      return argc<2 ? 2 : 0;
+    std::vector<std::string> positional;
+    for(int ai=1;ai<argc;++ai){
+      std::string arg=argv[ai];
+      if(arg=="--plain"){gPlainDiagnostics=true;continue;}
+      if(arg=="--help"||arg=="-h"){
+        std::cout<<"GLOP 0.7.0 native runtime — CHAOS MODE ENABLED\\n";
+        std::cout<<"usage: glop [--plain] <program.glop> [args...]\\n";
+        std::cout<<"       glop [--plain] check <program.glop>\\n";
+        std::cout<<"       glop --version\\n";
+        std::cout<<"built-ins: LEN PUSH POP TYPE INSTANCEOF ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS HAS KEYS RANGE NUMBER ARGS TIME_MS SLEEP_MS ENV CWD JOIN_PATH MIN MAX POW CLAMP ASSERT REPEAT TRIM REPLACE SPLIT JOIN\\n";
+        std::cout<<"diagnostics: chaotic by default; use --plain for boring machine-friendly output\\n";
+        return 0;
+      }
+      if(arg=="--version"||arg=="-v"){std::cout<<"GLOP 0.7.0 native runtime\\n";return 0;}
+      positional.push_back(std::move(arg));
     }
-        if(std::string(argv[1])=="--version" || std::string(argv[1])=="-v"){std::cout<<"GLOP 0.7.0 native runtime\n";return 0;}
-    bool checkOnly=std::string(argv[1])=="check";
-    const char* sourcePath=checkOnly ? (argc>=3 ? argv[2] : nullptr) : argv[1];
-    if(!sourcePath) throw glop::Error("usage: glop check <program.glop>");
-    if(checkOnly && argc!=3) throw glop::Error("usage: glop check <program.glop>");
-    glop::gArgs.assign(checkOnly ? argv + 3 : argv + 2, argv + argc);
+    if(positional.empty()){std::cerr<<"usage: glop [--plain] <program.glop> [args...]\\n";return 2;}
+    bool checkOnly=positional[0]=="check";
+    size_t pathIndex=checkOnly?1:0;
+    if(positional.size()<=pathIndex) throw glop::Error(checkOnly ? "usage: glop check <program.glop>" : "missing program.glop path");
+    if(checkOnly && positional.size()!=2) throw glop::Error("usage: glop check <program.glop>");
+    const std::string& sourcePath=positional[pathIndex];
+    glop::gArgs.assign(positional.begin()+pathIndex+1,positional.end());
     auto ast=glop::Parser(glop::Lexer(glop::readFile(sourcePath)).all()).program();
     if(checkOnly){
-      printChaosSuccess("SOURCE CHECKED. NO GOBLINS FOUND.", plain);
+      printChaosSuccess("SOURCE CHECKED. NO GOBLINS FOUND.", gPlainDiagnostics);
       return 0;
     }
     auto env=std::make_shared<glop::Env>();
@@ -562,7 +571,7 @@ int main(int argc,char**argv){
     env->vars["JOIN"]=glop::Value(glop::nativeJoin);
     for(auto&s:ast)s->exec(env);
     return 0;
-  }catch(const glop::Error&e){std::cerr<<chaosDiagnostic(e.what(), plain)<<"\n";return 1;}
+  }catch(const glop::Error&e){std::cerr<<chaosDiagnostic(e.what(), gPlainDiagnostics)<<"\n";return 1;}
   catch(const glop::ReturnSignal&){std::cerr<<"GLOP-E2003 [YEET CRIME]\\n  YEET ESCAPED A WIZARD. THIS IS NOT A NORMAL EXIT.\\n  Technical: YEET outside WIZARD\\n";return 1;}
   catch(...){std::cerr<<chaosDiagnostic("unknown runtime failure", plain)<<"\n";return 1;}
 }

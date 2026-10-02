@@ -4,10 +4,16 @@ export class BytecodeCompiler {
   constructor() {
     this.b = new BytecodeBuilder();
     this.locals = null;
+    this.loopContexts = [];
   }
 
   compile(program) {
-    for (const s of program.body) this.statement(s);
+    for (const s of program.body) {
+      if (s.type === "FunctionDecl") this.defineFunction(s);
+    }
+    for (const s of program.body) {
+      if (s.type !== "FunctionDecl") this.statement(s);
+    }
     this.b.emit(OP.CONST, this.b.constant(null));
     this.b.emit(OP.HALT);
     return this.b;
@@ -16,8 +22,10 @@ export class BytecodeCompiler {
   compileFunction(n) {
     const previous = this.b;
     const previousLocals = this.locals;
+    const previousLoops = this.loopContexts;
     this.b = new BytecodeBuilder();
     this.locals = new Map(n.params.map((name, i) => [name, i]));
+    this.loopContexts = [];
 
     for (const s of n.body) this.statement(s);
     this.b.emit(OP.CONST, this.b.constant(null));
@@ -33,7 +41,15 @@ export class BytecodeCompiler {
 
     this.b = previous;
     this.locals = previousLocals;
+    this.loopContexts = previousLoops;
     return chunk;
+  }
+
+  defineFunction(n) {
+    const chunk = this.compileFunction(n);
+    const index = this.b.addFunction(chunk);
+    this.b.emit(OP.MAKE_FUNCTION, index);
+    this.b.emit(OP.STORE_GLOBAL, n.name);
   }
 
   localIndex(name) {
@@ -53,13 +69,9 @@ export class BytecodeCompiler {
         }
         break;
 
-      case "FunctionDecl": {
-        const chunk = this.compileFunction(n);
-        const index = this.b.addFunction(chunk);
-        this.b.emit(OP.MAKE_FUNCTION, index);
-        this.b.emit(OP.STORE_GLOBAL, n.name);
+      case "FunctionDecl":
+        this.defineFunction(n);
         break;
-      }
 
       case "Print":
         this.expr(n.expression);
@@ -87,6 +99,33 @@ export class BytecodeCompiler {
           this.b.emit(OP.STORE_GLOBAL, n.target.name);
         }
         break;
+
+      case "While": {
+        const start = this.b.code.length;
+        this.expr(n.test);
+        const exit = this.b.emit(OP.JUMP_IF_FALSE, null);
+        this.loopContexts.push({ breakJumps: [], continueTarget: start });
+        for (const s of n.body) this.statement(s);
+        this.b.emit(OP.JUMP, start);
+        const end = this.b.code.length;
+        this.b.patch(exit, end);
+        const loop = this.loopContexts.pop();
+        for (const jump of loop.breakJumps) this.b.patch(jump, end);
+        break;
+      }
+
+      case "Break": {
+        if (!this.loopContexts.length) throw new Error("NOPE outside SPIN");
+        const jump = this.b.emit(OP.JUMP, null);
+        this.loopContexts[this.loopContexts.length - 1].breakJumps.push(jump);
+        break;
+      }
+
+      case "Continue": {
+        if (!this.loopContexts.length) throw new Error("ZOOM outside SPIN");
+        this.b.emit(OP.JUMP, this.loopContexts[this.loopContexts.length - 1].continueTarget);
+        break;
+      }
 
       case "If": {
         this.expr(n.test);

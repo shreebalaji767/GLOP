@@ -1,0 +1,22 @@
+GLOP numbers = [10, 20, 30]
+numbers[1] += 5
+
+GLOP person = {
+  name: «GLOP»,
+  count: 1
+}
+person.count += 2
+
+WIZARD add(a, b) {
+  YEET a + b
+}
+
+YAP numbers[1]
+YAP person.count
+YAP BONK add(40, 2)
+
+TRY {
+  OOPSIE «NATIVE BOOM»
+} CATCH error {
+  YAP error
+}

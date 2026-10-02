@@ -45,17 +45,17 @@ public:
       char c=peek();
       if(std::isspace((unsigned char)c)){take();continue;}
       if(c=='/'&&peek(1)=='/'){while(peek()&&peek()!='\n')take();continue;}
-      if(c=='/'&&peek(1)=='*'){take();take();while(peek()&&!(peek()=='*'&&peek(1)=='/'))take();if(!peek())throw Error("unterminated block comment");take();take();continue;}
+      if(c=='/'&&peek(1)=='*'){take();take();while(peek()&&!(peek()=='*'&&peek(1)=='/'))take();if(!peek())throw Error("unterminated block comment",SourcePos{l,cc});take();take();continue;}
       int l=line,cc=col;
       if(std::isalpha((unsigned char)c)||c=='_'){std::string x;while(std::isalnum((unsigned char)peek())||peek()=='_')x+=take();out.push_back({Token::ID,x,0,l,cc});continue;}
       if(std::isdigit((unsigned char)c)){std::string x;while(std::isdigit((unsigned char)peek()))x+=take();if(peek()=='.'){x+=take();while(std::isdigit((unsigned char)peek()))x+=take();}out.push_back({Token::NUM,x,std::stod(x),l,cc});continue;}
-      if(c=='"'||c=='\\''){char q=take();std::string x;while(peek()&&peek()!=q){if(peek()=='\\\\'){take();x+=take();}else x+=take();}if(take()!=q)throw Error("unterminated string at "+std::to_string(l)+":"+std::to_string(cc));out.push_back({Token::STR,x,0,l,cc});continue;}
+      if(c=='"'||c=='\\''){char q=take();std::string x;while(peek()&&peek()!=q){if(peek()=='\\\\'){take();x+=take();}else x+=take();}if(take()!=q)throw Error("unterminated string",SourcePos{l,cc});out.push_back({Token::STR,x,0,l,cc});continue;}
       if(c=='«'){take();std::string x;while(peek()&&peek()!='»')x+=take();if(take()!='»')throw Error("unterminated string at "+std::to_string(l)+":"+std::to_string(cc));out.push_back({Token::STR,x,0,l,cc});continue;}
       std::string two;two+=c;two+=peek(1);
       if(two=="=="||two=="!="||two=="<="||two==">="||two=="&&"||two=="||"||two=="+="||two=="-="||two=="*="||two=="/="){take();take();out.push_back({Token::OP,two,0,l,cc});continue;}
       if(std::string("+-*/%<>=!").find(c)!=std::string::npos){take();out.push_back({Token::OP,std::string(1,c),0,l,cc});continue;}
       if(std::string("(){}[],.:;").find(c)!=std::string::npos){take();out.push_back({Token::PUNC,std::string(1,c),0,l,cc});continue;}
-      throw Error("unexpected character at "+std::to_string(l)+":"+std::to_string(cc));
+      throw Error(std::string("unexpected character: ")+c,SourcePos{l,cc});
     }
     out.push_back({Token::END,"",0,line,col}); return out;
   }
@@ -533,7 +533,7 @@ static bool gPlainDiagnostics=false;
 
 static std::string chaosDiagnostic(const std::string& message, bool plain=false, const SourcePos* pos=nullptr){
   if(plain) return std::string("GLOP ERROR")+(pos?(" at "+pos->describe()):"")+": "+message;
-  if(plain) return "GLOP ERROR: "+message;
+  if(plain) return std::string("GLOP ERROR")+(pos?(" at "+pos->describe()):"")+": "+message;
   std::string code="GLOP-E9999",cat="[CHAOS ENGINE]",what="Something went sideways with great confidence.",
               why="The runtime encountered a condition it could not complete normally.",
               fix="Read the technical detail, inspect the nearby code, and correct the reported condition.";
@@ -629,7 +629,7 @@ int main(int argc,char**argv){
     env->vars["JOIN"]=glop::Value(glop::nativeJoin);
     for(auto&s:ast)s->exec(env);
     return 0;
-  }catch(const glop::Error&e){std::cerr<<chaosDiagnostic(e.what(), gPlainDiagnostics)<<"\n";return 1;}
+  }catch(const glop::Error&e){std::cerr<<chaosDiagnostic(e.what(), gPlainDiagnostics, e.hasPos?&e.pos:nullptr)<<"\n";return 1;}
   catch(const glop::ReturnSignal&){std::cerr<<"GLOP-E2003 [YEET CRIME]\\n  YEET ESCAPED A WIZARD. THIS IS NOT A NORMAL EXIT.\\n  Technical: YEET outside WIZARD\\n";return 1;}
   catch(...){std::cerr<<chaosDiagnostic("unknown runtime failure", plain)<<"\n";return 1;}
 }

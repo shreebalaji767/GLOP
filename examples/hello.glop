@@ -1,0 +1,4 @@
+GLOP x = 10
+GLOP y = 20
+YAP «GLOP HAS AWAKENED»
+YAP x + y

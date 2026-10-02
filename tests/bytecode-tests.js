@@ -7,6 +7,11 @@ import { runBytecode } from "../src/vm.js";
 const execute=source=>{const output=[];const result=runBytecode(compileBytecode(parse(lex(source))),{output:value=>output.push(value)});return{output,result}};
 
 assert.deepEqual(execute("GLOP x=[10,20,30] YAP x[1]").output,[20]);
+assert.deepEqual(execute("TRY { OOPSIE «BAD» } CATCH error { YAP error }").output,["BAD"]);
+assert.deepEqual(execute("WIZARD fail(){ OOPSIE «BOOM» } TRY { BONK fail() } CATCH error { YAP error }").output,["BOOM"]);
+assert.deepEqual(execute("TRY { YAP 1 OOPSIE «STOP» YAP 2 } CATCH error { YAP error }").output,["1","STOP"]);
+assert.deepEqual(execute("TRY { TRY { OOPSIE «INNER» } CATCH e { OOPSIE e } } CATCH outer { YAP outer }").output,["INNER"]);
+assert.deepEqual(execute("YAP BASED && BASED YAP CAP || BASED").output,[true,true]);
 assert.deepEqual(execute("GLOP x=[10,20] x[1]=99 YAP x[1]").output,[99]);
 assert.deepEqual(execute("GLOP p={name:«RAVI»,age:25} YAP p.name YAP p.age").output,["RAVI",25]);
 assert.deepEqual(execute("GLOP p={age:25} p.age=30 YAP p.age").output,[30]);
@@ -23,4 +28,5 @@ assert.deepEqual(execute("WIZARD outer(a){ WIZARD middle(){ WIZARD inner(){ YEET
 assert.deepEqual(execute("WIZARD makePair(start){ GLOP x=start WIZARD inc(){ x+=1 YEET x } WIZARD read(){ YEET x } YEET inc } GLOP f=BONK makePair(3) YAP BONK f() YAP BONK f()").output,[4,5]);
 
 assert.throws(()=>execute("WIZARD add(a,b){ YEET a+b } YAP BONK add(1)").output,/expected 2 argument/);
+assert.throws(()=>execute("OOPSIE «UNHANDLED»"),/UNHANDLED/);
 console.log("GLOP BYTECODE VM TESTS PASSED.");

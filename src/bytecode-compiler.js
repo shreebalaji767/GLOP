@@ -43,6 +43,25 @@ export class BytecodeCompiler {
       case"Print":this.expr(n.expression);this.b.emit(OP.PRINT);break;
       case"ExpressionStatement":this.expr(n.expression);this.b.emit(OP.POP);break;
       case"Return":this.expr(n.value);this.b.emit(OP.RETURN);break;
+      case"Throw":this.expr(n.value);this.b.emit(OP.THROW);break;
+      case"TryCatch":{
+        const setup=this.b.emit(OP.SETUP_CATCH,null);
+        for(const s of n.tryBody)this.statement(s);
+        this.b.emit(OP.POP_CATCH);
+        const done=this.b.emit(OP.JUMP,null);
+        const handler=this.b.code.length;
+        this.b.patch(setup,handler);
+        if(this.locals){
+          let slot=this.locals.get(n.param);
+          if(slot===undefined){slot=this.locals.size;this.locals.set(n.param,slot);}
+          this.b.emit(OP.STORE_LOCAL,slot);
+        }else{
+          this.b.emit(OP.STORE_GLOBAL,n.param);
+        }
+        for(const s of n.catchBody)this.statement(s);
+        this.b.patch(done,this.b.code.length);
+        break;
+      }
       case"Assignment":this.assignment(n);break;
       case"While":{const start=this.b.code.length;this.expr(n.test);const exit=this.b.emit(OP.JUMP_IF_FALSE,null);this.loopContexts.push({breakJumps:[],continueTarget:start});for(const s of n.body)this.statement(s);this.b.emit(OP.JUMP,start);const end=this.b.code.length;this.b.patch(exit,end);const loop=this.loopContexts.pop();for(const jump of loop.breakJumps)this.b.patch(jump,end);break}
       case"Break":{if(!this.loopContexts.length)throw new Error("NOPE outside SPIN");this.loopContexts[this.loopContexts.length-1].breakJumps.push(this.b.emit(OP.JUMP,null));break}
@@ -79,7 +98,19 @@ export class BytecodeCompiler {
       case"Literal":this.b.emit(OP.CONST,this.b.constant(n.value));break;
       case"Identifier":this.loadName(this.resolveName(n.name));break;
       case"Unary":this.expr(n.argument);this.b.emit(n.op==="!"?OP.NOT:OP.NEG);break;
-      case"Binary":{this.expr(n.left);this.expr(n.right);const op={"+":OP.ADD,"-":OP.SUB,"*":OP.MUL,"/":OP.DIV,"%":OP.MOD,"==":OP.EQ,"!=":OP.NE,"<":OP.LT,"<=":OP.LTE,">":OP.GT,">=":OP.GTE}[n.op];if(!op)throw new Error("Unsupported binary operator: "+n.op);this.b.emit(op);break}
+      case"Binary":{
+        if(n.op==="&&"||n.op==="||"){
+          this.expr(n.left);
+          const jump=n.op==="&&"?this.b.emit(OP.JUMP_IF_FALSE,null):this.b.emit(OP.JUMP_IF_TRUE,null);
+          this.b.emit(OP.POP);
+          this.expr(n.right);
+          this.b.patch(jump,this.b.code.length);
+          break;
+        }
+        this.expr(n.left);this.expr(n.right);
+        const op={"+":OP.ADD,"-":OP.SUB,"*":OP.MUL,"/":OP.DIV,"%":OP.MOD,"==":OP.EQ,"!=":OP.NE,"<":OP.LT,"<=":OP.LTE,">":OP.GT,">=":OP.GTE}[n.op];
+        if(!op)throw new Error("Unsupported binary operator: "+n.op);this.b.emit(op);break;
+      }
       case"Call":this.expr(n.callee);for(const arg of n.args)this.expr(arg);this.b.emit(OP.CALL,n.args.length);break;
       case"Array":for(const e of n.elements)this.expr(e);this.b.emit(OP.MAKE_ARRAY,n.elements.length);break;
       case"Object":for(const p of n.properties){this.b.emit(OP.CONST,this.b.constant(p.key));this.expr(p.value)}this.b.emit(OP.MAKE_OBJECT,n.properties.length);break;

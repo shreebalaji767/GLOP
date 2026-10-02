@@ -1,0 +1,11 @@
+// GLOP standard library smoke test
+YAP BONK MIN(8, 3, 11)
+YAP BONK MAX(8, 3, 11)
+YAP BONK POW(2, 8)
+YAP BONK CLAMP(120, 0, 100)
+YAP BONK ASSERT(BASED, "should not fail")
+YAP BONK REPEAT("GLOP", 3)
+YAP BONK TRIM("  hello  ")
+YAP BONK REPLACE("GLOP IS GLOP", "GLOP", "REAL")
+YAP BONK SPLIT("a,b,c", ",")
+YAP BONK JOIN(["A", "B", "C"], "-")

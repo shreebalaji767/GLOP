@@ -127,9 +127,9 @@ struct Call:Expr{std::unique_ptr<Expr>f;std::vector<std::unique_ptr<Expr>>args;V
 
 struct Var:Stmt{std::string n;std::unique_ptr<Expr>v; Var(std::string x,std::unique_ptr<Expr>y):n(std::move(x)),v(std::move(y)){}void exec(std::shared_ptr<Env>e)override{e->vars[n]=v->eval(e);}};
 struct Print:Stmt{std::unique_ptr<Expr>v; explicit Print(std::unique_ptr<Expr>x):v(std::move(x)){}void exec(std::shared_ptr<Env>e)override{std::cout<<show(v->eval(e))<<"\n";}};
-struct ExprStmt:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{v->eval(e);}};
-struct Return:Stmt{std::unique_ptr<Expr>x; explicit Return(std::unique_ptr<Expr>y):v(std::move(y)){}void exec(std::shared_ptr<Env>e)override{throw ReturnSignal{v->eval(e)};}};
-struct Throw:Stmt{std::unique_ptr<Expr>x; explicit Throw(std::unique_ptr<Expr>y):v(std::move(y)){}void exec(std::shared_ptr<Env>e)override{throw Error(show(v->eval(e)));}};
+struct ExprStmt:Stmt{std::unique_ptr<Expr>v; explicit ExprStmt(std::unique_ptr<Expr>x):v(std::move(x)){} void exec(std::shared_ptr<Env>e)override{v->eval(e);}};
+struct Return:Stmt{std::unique_ptr<Expr>v; explicit Return(std::unique_ptr<Expr>y):v(std::move(y)){}void exec(std::shared_ptr<Env>e)override{throw ReturnSignal{v->eval(e)};}};
+struct Throw:Stmt{std::unique_ptr<Expr>v; explicit Throw(std::unique_ptr<Expr>y):v(std::move(y)){}void exec(std::shared_ptr<Env>e)override{throw Error(show(v->eval(e)));}};
 
 static Value applyAssign(const std::string&op,const Value&old,const Value&rhs){
   if(op=="=")return rhs;

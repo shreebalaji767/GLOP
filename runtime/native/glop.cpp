@@ -374,13 +374,13 @@ static std::string readFile(const std::string&f){std::ifstream in(f);if(!in)thro
 
 int main(int argc,char**argv){
   try{
-    if(argc!=2){
+    if(argc<2){
       std::cerr<<"GLOP 0.6.0 native runtime\n";
-      std::cerr<<"usage: glop <program.glop>\n";
+      std::cerr<<"usage: glop <program.glop> [args...]\n";
       std::cerr<<"built-ins: LEN PUSH POP TYPE ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS HAS KEYS RANGE NUMBER ARGS TIME_MS SLEEP_MS ENV CWD JOIN_PATH\n";
       return 2;
     }
-    glop::gArgs.assign(argv + 1, argv + argc);\n    auto ast=glop::Parser(glop::Lexer(glop::readFile(argv[1])).all()).program();
+    glop::gArgs.assign(argv + 2, argv + argc);\n    auto ast=glop::Parser(glop::Lexer(glop::readFile(argv[1])).all()).program();
     auto env=std::make_shared<glop::Env>();
     env->vars["LEN"]=glop::Value(glop::nativeLen);
     env->vars["PUSH"]=glop::Value(glop::nativePush);

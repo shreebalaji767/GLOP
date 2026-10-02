@@ -82,6 +82,19 @@ YAP INSTANCEOF(worker, Person)
 ```
 
 
+## Standard library
+
+The reference JavaScript VM and native runtime expose the core built-ins with the same language-level names.
+
+Collections: `LEN`, `PUSH`, `POP`, `HAS`, `KEYS`, `RANGE`.
+
+Math: `ABS`, `SQRT`, `FLOOR`, `CEIL`, `MIN`, `MAX`, `POW`, `CLAMP`.
+
+Strings/conversion: `TYPE`, `TO_STRING`, `SUBSTR`, `UPPER`, `LOWER`, `TRIM`, `REPEAT`, `REPLACE`, `SPLIT`, `JOIN`, `NUMBER`.
+
+System: `READ_FILE`, `WRITE_FILE`, `EXISTS`, `CWD`, `JOIN_PATH`, `ENV`, `ARGS`, `TIME_MS`, `SLEEP_MS`, `ASSERT`.
+
+
 ## Modules
 
 Module declarations are currently file-scoped and path-based.

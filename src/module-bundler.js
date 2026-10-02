@@ -40,12 +40,11 @@ export class ModuleBundler {
 
   visit(file, stack = []) {
     const canonical = path.resolve(file);
-    if (this.modules.has(canonical)) return this.modules.get(canonical);
-
     if (stack.includes(canonical)) {
       const cycle = [...stack.slice(stack.indexOf(canonical)), canonical].join(" -> ");
       throw new GlopBundleError(`circular import detected: ${cycle}`, "MODULE_CYCLE");
     }
+    if (this.modules.has(canonical)) return this.modules.get(canonical);
 
     const ast = this.parseFile(canonical);
     analyze(ast);
@@ -95,10 +94,10 @@ export class ModuleBundler {
 
   factoryFor(record) {
     const importNames = record.imports.map(x => x.ast.alias);
-    const exports = record.ast.body.find(s => s.type === "ExportDecl");
+    const exportedNames = record.ast.body.filter(s => s.type === "ExportDecl").flatMap(s => s.names);
     const body = record.ast.body.filter(s => s.type !== "ImportDecl" && s.type !== "ExportDecl");
 
-    const properties = (exports?.names ?? []).map(name => ({ key: name, value: node("Identifier", { name }) }));
+    const properties = exportedNames.map(name => ({ key: name, value: node("Identifier", { name }) }));
     body.push(node("Return", {
       value: node("Object", { properties })
     }));

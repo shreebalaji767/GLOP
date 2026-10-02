@@ -1,6 +1,10 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <chrono>
+#include <cstdlib>
+#include <thread>
+#include <filesystem>
 #include <cstdlib>
 #include <fstream>
 #include <functional>
@@ -36,7 +40,7 @@ public:
     while(p<s.size()){
       char c=peek();
       if(std::isspace((unsigned char)c)){take();continue;}
-      if(c=='/'&&peek(1)=='/'){while(peek()&&peek()!='\n')take();continue;}
+      if(c=='/'&&peek(1)=='/'){while(peek()&&peek()!='\n')take();continue;}\n      if(c=='/'&&peek(1)=='*'){take();take();while(peek()&&!(peek()=='*'&&peek(1)=='/'))take();if(!peek())throw Error("unterminated block comment");take();take();continue;}
       int l=line,cc=col;
       if(std::isalpha((unsigned char)c)||c=='_'){std::string x;while(std::isalnum((unsigned char)peek())||peek()=='_')x+=take();out.push_back({kw.count(x)?ID:ID,x,0,l,cc});continue;}
       if(std::isdigit((unsigned char)c)){std::string x;while(std::isdigit((unsigned char)peek()))x+=take();if(peek()=='.'){x+=take();while(std::isdigit((unsigned char)peek()))x+=take();}out.push_back({NUM,x,std::stod(x),l,cc});continue;}
@@ -204,6 +208,50 @@ public:
  }
 };
 
+static std::vector<std::string> gArgs;
+
+static Value nativeArgs(const std::vector<Value>& a){
+  if(!a.empty()) throw Error("ARGS expects 0 arguments");
+  auto out=std::make_shared<Value::Array>();
+  for(const auto& s:gArgs) out->push_back(s);
+  return out;
+}
+static Value nativeTimeMs(const std::vector<Value>& a){
+  if(!a.empty()) throw Error("TIME_MS expects 0 arguments");
+  auto now=std::chrono::time_point_cast<std::chrono::milliseconds>(
+      std::chrono::system_clock::now());
+  return (double)now.time_since_epoch().count();
+}
+static Value nativeSleepMs(const std::vector<Value>& a){
+  if(a.size()!=1) throw Error("SLEEP_MS expects 1 argument");
+  double ms=num(a[0]);
+  if(ms<0) throw Error("SLEEP_MS expects a non-negative number");
+  std::this_thread::sleep_for(std::chrono::milliseconds((long long)ms));
+  return true;
+}
+static Value nativeGetEnv(const std::vector<Value>& a){
+  if(a.size()!=1) throw Error("ENV expects 1 argument");
+  auto k=std::get_if<std::string>(&a[0].v);
+  if(!k) throw Error("ENV expects a string key");
+  const char* v=std::getenv(k->c_str());
+  return v ? Value(std::string(v)) : Value();
+}
+static Value nativeCwd(const std::vector<Value>& a){
+  if(!a.empty()) throw Error("CWD expects 0 arguments");
+  try{return std::filesystem::current_path().string();}
+  catch(const std::exception&){throw Error("CWD failed");}
+}
+static Value nativeJoinPath(const std::vector<Value>& a){
+  if(a.size()<1) throw Error("JOIN_PATH expects at least 1 argument");
+  std::filesystem::path out;
+  for(const auto& v:a){
+    auto s=std::get_if<std::string>(&v.v);
+    if(!s) throw Error("JOIN_PATH expects string arguments");
+    out /= *s;
+  }
+  return out.lexically_normal().string();
+}
+
 static std::string readFile(const std::string&f);
 
 static Value nativeLen(const std::vector<Value>& a){
@@ -327,12 +375,12 @@ static std::string readFile(const std::string&f){std::ifstream in(f);if(!in)thro
 int main(int argc,char**argv){
   try{
     if(argc!=2){
-      std::cerr<<"GLOP 0.5.0 native runtime\n";
+      std::cerr<<"GLOP 0.6.0 native runtime\n";
       std::cerr<<"usage: glop <program.glop>\n";
-      std::cerr<<"built-ins: LEN PUSH POP TYPE ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS HAS KEYS RANGE NUMBER\n";
+      std::cerr<<"built-ins: LEN PUSH POP TYPE ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS HAS KEYS RANGE NUMBER ARGS TIME_MS SLEEP_MS ENV CWD JOIN_PATH\n";
       return 2;
     }
-    auto ast=glop::Parser(glop::Lexer(glop::readFile(argv[1])).all()).program();
+    glop::gArgs.assign(argv + 1, argv + argc);\n    auto ast=glop::Parser(glop::Lexer(glop::readFile(argv[1])).all()).program();
     auto env=std::make_shared<glop::Env>();
     env->vars["LEN"]=glop::Value(glop::nativeLen);
     env->vars["PUSH"]=glop::Value(glop::nativePush);
@@ -352,7 +400,7 @@ int main(int argc,char**argv){
     env->vars["HAS"]=glop::Value(glop::nativeHas);
     env->vars["KEYS"]=glop::Value(glop::nativeKeys);
     env->vars["RANGE"]=glop::Value(glop::nativeRange);
-    env->vars["NUMBER"]=glop::Value(glop::nativeParseNumber);
+    env->vars["NUMBER"]=glop::Value(glop::nativeParseNumber);\n    env->vars["ARGS"]=glop::Value(glop::nativeArgs);\n    env->vars["TIME_MS"]=glop::Value(glop::nativeTimeMs);\n    env->vars["SLEEP_MS"]=glop::Value(glop::nativeSleepMs);\n    env->vars["ENV"]=glop::Value(glop::nativeGetEnv);\n    env->vars["CWD"]=glop::Value(glop::nativeCwd);\n    env->vars["JOIN_PATH"]=glop::Value(glop::nativeJoinPath);
     for(auto&s:ast)s->exec(env);
     return 0;
   }catch(const glop::Error&e){std::cerr<<"GLOP OOPSIE: "<<e.what()<<"\n";return 1;}

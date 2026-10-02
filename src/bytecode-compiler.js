@@ -29,10 +29,18 @@ export class BytecodeCompiler {
   currentContext(){return this.contexts[this.contexts.length-1]??null}
   ensureFree(context,name){if(!context.freeMap.has(name)){const i=context.freeNames.length;context.freeNames.push(name);context.freeMap.set(name,i)}return context.freeMap.get(name)}
   resolveName(name){
-    const current=this.currentContext(); if(!current)return{kind:"global",name};
+    const current=this.currentContext();
+    if(!current)return{kind:"global",name};
     if(current.locals.has(name))return{kind:"local",index:current.locals.get(name)};
     if(current.freeMap.has(name))return{kind:"free",index:current.freeMap.get(name)};
-    for(let i=this.contexts.length-2;i>=0;i--){const parent=this.contexts[i];if(parent.locals.has(name)||parent.freeMap.has(name)){for(let j=i+1;j<this.contexts.length;j++)this.ensureFree(this.contexts[j],name);return{kind:"free",index:current.freeMap.get(name)}}}
+
+    for(let i=this.contexts.length-2;i>=0;i--){
+      const parent=this.contexts[i];
+      if(parent.locals.has(name)||parent.freeMap.has(name)){
+        for(let j=i+1;j<this.contexts.length;j++)this.ensureFree(this.contexts[j],name);
+        return{kind:"free",index:current.freeMap.get(name)};
+      }
+    }
     return{kind:"global",name};
   }
 

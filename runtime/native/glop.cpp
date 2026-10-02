@@ -39,8 +39,7 @@ public:
     while(p<s.size()){
       char c=peek();
       if(std::isspace((unsigned char)c)){take();continue;}
-      if(c=='/'&&peek(1)=='/'){while(peek()&&peek()!='
-')take();continue;}
+      if(c=='/'&&peek(1)=='/'){while(peek()&&peek()!='\n')take();continue;}
       if(c=='/'&&peek(1)=='*'){take();take();while(peek()&&!(peek()=='*'&&peek(1)=='/'))take();if(!peek())throw Error("unterminated block comment");take();take();continue;}
       int l=line,cc=col;
       if(std::isalpha((unsigned char)c)||c=='_'){std::string x;while(std::isalnum((unsigned char)peek())||peek()=='_')x+=take();out.push_back({kw.count(x)?ID:ID,x,0,l,cc});continue;}
@@ -118,8 +117,7 @@ struct Call:Expr{std::unique_ptr<Expr>f;std::vector<std::unique_ptr<Expr>>args;V
     throw Error("BONK target is not a function");}};
 
 struct Var:Stmt{std::string n;std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{e->vars[n]=v->eval(e);}};
-struct Print:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{std::cout<<show(v->eval(e))<<"
-";}};
+struct Print:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{std::cout<<show(v->eval(e))<<"\n";}};
 struct ExprStmt:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{v->eval(e);}};
 struct Return:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{throw ReturnSignal{v->eval(e)};}};
 struct Throw:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{throw Error(show(v->eval(e)));}};
@@ -488,8 +486,7 @@ int main(int argc,char**argv){
     env->vars["JOIN"]=glop::Value(glop::nativeJoin);
     for(auto&s:ast)s->exec(env);
     return 0;
-  }catch(const glop::Error&e){std::cerr<<"GLOP OOPSIE: "<<e.what()<<"
-";return 1;}
+  }catch(const glop::Error&e){std::cerr<<"GLOP OOPSIE: "<<e.what()<<"\n";return 1;}
    catch(const glop::ReturnSignal&){std::cerr<<"GLOP OOPSIE: YEET outside WIZARD
 ";return 1;}
    catch(...){std::cerr<<"GLOP OOPSIE: unknown runtime failure

@@ -30,7 +30,7 @@ node src/cli.js run examples/hello.glop
 node src/cli.js compile examples/hello.glop\nnode src/cli.js build examples/hello.glop\n\n# Native runtime (after building runtime/native)\n./glop-runtime examples/hello.gbc
 \`\`\`
 
-GLOP 0.5 is the native-runtime foundation for a future VM, modules, classes, package manager,
+GLOP 0.6 is the native-runtime foundation for a future VM, modules, classes, package manager,
 formatter, debugger, REPL and browser playground.
 
 
@@ -66,5 +66,7 @@ The dependency-free native runtime now includes:
 - strings: `SUBSTR`, `UPPER`, `LOWER`
 - filesystem: `READ_FILE`, `WRITE_FILE`, `EXISTS`
 - collections/conversion: `HAS`, `KEYS`, `RANGE`, `NUMBER`
+- system/runtime: `ARGS`, `TIME_MS`, `SLEEP_MS`, `ENV`, `CWD`, `JOIN_PATH`
+- source comments: `//` and `/* ... */`
 
 These are native GLOP runtime functions, not calls into Node.js, Python, or another language runtime.

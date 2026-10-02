@@ -52,7 +52,7 @@ try {
   }
 
   if (cmd === "run") {
-    runBytecode(compileBytecode(ast));
+    new ModuleLoader({output:console.log}).runEntry(file);
     process.exit(0);
   }
 

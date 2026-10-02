@@ -1,0 +1,7 @@
+GLOP path = "glop-native-demo.txt"
+YAP BONK WRITE_FILE(path, "GLOP says YAP!")
+YAP BONK EXISTS(path)
+YAP BONK READ_FILE(path)
+YAP BONK UPPER("glop")
+YAP BONK LOWER("GLOP")
+YAP BONK SUBSTR("ABCDEFGHIJ", 2, 4)

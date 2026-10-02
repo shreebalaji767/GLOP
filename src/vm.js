@@ -2,7 +2,7 @@ import { OP } from "./bytecode.js";
 
 export class GlopRuntimeError extends Error { constructor(message){super("GLOP RUNTIME OOPSIE: "+message);this.name="GlopRuntimeError"} }
 export class GlopCell { constructor(value=null){this.value=value} }
-export class GlopFunction { constructor(chunk,freeCells=[]){this.chunk=chunk;this.freeCells=freeCells} }
+export class GlopFunction { constructor(chunk,freeCells=[],globals=null){this.chunk=chunk;this.freeCells=freeCells;this.globals=globals} }
 
 export class VM {
   constructor(bytecode,{output=console.log}={}){this.bc=bytecode;this.stack=[];this.globals=new Map();this.frames=[];this.handlers=[];this.ip=0;this.chunk=bytecode;this.locals=null;this.freeCells=[];this.output=output}
@@ -14,7 +14,7 @@ export class VM {
     while(this.handlers.length){
       const h=this.handlers.pop();
       while(this.frames.length>h.frameDepth)this.frames.pop();
-      this.chunk=h.chunk;this.ip=h.target;this.locals=h.locals;this.freeCells=h.freeCells;
+      this.chunk=h.chunk;this.ip=h.target;this.locals=h.locals;this.freeCells=h.freeCells;this.globals=h.globals;
       this.stack.length=h.stackDepth;this.stack.push(error);
       return;
     }
@@ -34,7 +34,7 @@ export class VM {
         case OP.LOAD_FREE:if(!this.freeCells[ins.arg])throw new GlopRuntimeError("invalid captured slot: "+ins.arg);this.stack.push(this.freeCells[ins.arg].value);break;
         case OP.STORE_FREE:if(!this.freeCells[ins.arg])throw new GlopRuntimeError("invalid captured slot: "+ins.arg);this.freeCells[ins.arg].value=this.pop();break;
         case OP.MAKE_CLOSURE:case OP.MAKE_FUNCTION:this.stack.push(this.makeClosure(this.chunk.functions[ins.arg]));break;
-        case OP.SETUP_CATCH:this.handlers.push({frameDepth:this.frames.length,chunk:this.chunk,target:ins.arg,locals:this.locals,freeCells:this.freeCells,stackDepth:this.stack.length});break;
+        case OP.SETUP_CATCH:this.handlers.push({frameDepth:this.frames.length,chunk:this.chunk,target:ins.arg,locals:this.locals,freeCells:this.freeCells,globals:this.globals,stackDepth:this.stack.length});break;
         case OP.POP_CATCH:{const i=this.handlers.length-1;if(i<0)throw new GlopRuntimeError("catch handler stack underflow");this.handlers.splice(i,1);break;}
         case OP.THROW:{const error=this.pop();this.raise(error);break;}
         case OP.MAKE_ARRAY:{const count=ins.arg;if(this.stack.length<count)throw new GlopRuntimeError("stack underflow during array creation");this.stack.push(this.stack.splice(this.stack.length-count,count));break}

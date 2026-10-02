@@ -33,7 +33,15 @@ try {
     process.exit(0);
   }
 
-  if (cmd === "build") {\n    const oi = rest.indexOf("-o");\n    const out = oi >= 0 ? rest[oi + 1] : file.replace(/\\.glop$/, ".gbc");\n    writeGBC(compileBytecode(ast), out);\n    console.log("GLOP bytecode -> " + out);\n    process.exit(0);\n  }\n\n  const js = compile(ast);
+  if (cmd === "build") {
+    const oi = rest.indexOf("-o");
+    const out = oi >= 0 ? rest[oi + 1] : file.replace(/\\.glop$/, ".gbc");
+    writeGBC(compileBytecode(ast), out);
+    console.log("GLOP bytecode -> " + out);
+    process.exit(0);
+  }
+
+  const js = compile(ast);
 
   if (cmd === "compile") {
     const oi = rest.indexOf("-o");

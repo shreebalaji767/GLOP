@@ -45,12 +45,12 @@ public:
       char c=peek();
       if(std::isspace((unsigned char)c)){take();continue;}
       if(c=='/'&&peek(1)=='/'){while(peek()&&peek()!='\n')take();continue;}
-      if(c=='/'&&peek(1)=='*'){take();take();while(peek()&&!(peek()=='*'&&peek(1)=='/'))take();if(!peek())throw Error("unterminated block comment",SourcePos{l,cc});take();take();continue;}
+      if(c=='/'&&peek(1)=='*'){int l=line,cc=col;take();take();while(peek()&&!(peek()=='*'&&peek(1)=='/'))take();if(!peek())throw Error("unterminated block comment",SourcePos{l,cc});take();take();continue;}
       int l=line,cc=col;
       if(std::isalpha((unsigned char)c)||c=='_'){std::string x;while(std::isalnum((unsigned char)peek())||peek()=='_')x+=take();out.push_back({Token::ID,x,0,l,cc});continue;}
       if(std::isdigit((unsigned char)c)){std::string x;while(std::isdigit((unsigned char)peek()))x+=take();if(peek()=='.'){x+=take();while(std::isdigit((unsigned char)peek()))x+=take();}out.push_back({Token::NUM,x,std::stod(x),l,cc});continue;}
       if(c=='"'||c=='\\''){char q=take();std::string x;while(peek()&&peek()!=q){if(peek()=='\\\\'){take();x+=take();}else x+=take();}if(take()!=q)throw Error("unterminated string",SourcePos{l,cc});out.push_back({Token::STR,x,0,l,cc});continue;}
-      if(c=='«'){take();std::string x;while(peek()&&peek()!='»')x+=take();if(take()!='»')throw Error("unterminated string at "+std::to_string(l)+":"+std::to_string(cc));out.push_back({Token::STR,x,0,l,cc});continue;}
+      if(c=='«'){take();std::string x;while(peek()&&peek()!='»')x+=take();if(take()!='»')throw Error("unterminated string",SourcePos{l,cc});out.push_back({Token::STR,x,0,l,cc});continue;}
       std::string two;two+=c;two+=peek(1);
       if(two=="=="||two=="!="||two=="<="||two==">="||two=="&&"||two=="||"||two=="+="||two=="-="||two=="*="||two=="/="){take();take();out.push_back({Token::OP,two,0,l,cc});continue;}
       if(std::string("+-*/%<>=!").find(c)!=std::string::npos){take();out.push_back({Token::OP,std::string(1,c),0,l,cc});continue;}
@@ -530,9 +530,10 @@ static std::string readFile(const std::string&f){std::ifstream in(f);if(!in)thro
 
 
 static bool gPlainDiagnostics=false;
+static std::string gSourcePath;
+static std::string gSourceText;
 
 static std::string chaosDiagnostic(const std::string& message, bool plain=false, const SourcePos* pos=nullptr){
-  if(plain) return std::string("GLOP ERROR")+(pos?(" at "+pos->describe()):"")+": "+message;
   if(plain) return std::string("GLOP ERROR")+(pos?(" at "+pos->describe()):"")+": "+message;
   std::string code="GLOP-E9999",cat="[CHAOS ENGINE]",what="Something went sideways with great confidence.",
               why="The runtime encountered a condition it could not complete normally.",
@@ -551,6 +552,22 @@ static std::string chaosDiagnostic(const std::string& message, bool plain=false,
   else if(message.find("invalid assignment")!=std::string::npos){code="GLOP-E2004";cat="[ASSIGNMENT CHAOS]";what="YOU TRIED TO STICK A VALUE SOMEWHERE THAT IS NOT STICKABLE.";why="The left side of the assignment is not a variable, member, or array element.";fix="Assign to a GLOP variable, object member, or valid array index.";}
   else if(message.find("cannot open")!=std::string::npos){code="GLOP-E5001";cat="[FILE GOBLIN]";what="THE FILE DOOR IS LOCKED AND GLOP DOES NOT HAVE THE KEY.";why="The requested file could not be opened.";fix="Check the path, working directory, permissions, and whether the file exists.";}
   std::string s=code+" "+cat+"\n\n  WHAT HAPPENED\n  "+what+"\n\n  WHY THIS MAY HAVE HAPPENED\n  "+why+"\n\n  WHAT CAN BE DONE\n  "+fix+"\n\n  TECHNICAL DETAIL\n  "+message+"\n\n  CHAOS REPORT\n  GLOP → PANIC → DIAGNOSE → FIX → BONK AGAIN";
+  if(pos && !gSourceText.empty()){
+    std::string sourceLine;
+    int lineNo=1;
+    size_t start=0;
+    while(start<gSourceText.size() && lineNo<pos->line){
+      size_t nl=gSourceText.find('\n',start);
+      if(nl==std::string::npos){start=gSourceText.size();break;}
+      start=nl+1;
+      ++lineNo;
+    }
+    if(start<gSourceText.size()){
+      size_t nl=gSourceText.find('\n',start);
+      sourceLine=gSourceText.substr(start,nl==std::string::npos?std::string::npos:nl-start);
+      s += "\n\n  SOURCE\n  "+gSourcePath+":"+pos->describe()+"\n  "+sourceLine+"\n  "+std::string(std::max(0,pos->col-1),' ')+"^";
+    }
+  }
   return s;
 }
 static void printChaosSuccess(const std::string&what, bool plain=false){
@@ -584,8 +601,10 @@ int main(int argc,char**argv){
     if(checkOnly && positional.size()!=2) throw glop::Error("usage: glop check <program.glop>");
     if(runCommand && positional.size()<2) throw glop::Error("usage: glop run <program.glop> [args...]");
     const std::string& sourcePath=positional[pathIndex];
+    glop::gSourcePath=sourcePath;
+    glop::gSourceText=glop::readFile(sourcePath);
     glop::gArgs.assign(positional.begin()+pathIndex+1,positional.end());
-    auto ast=glop::Parser(glop::Lexer(glop::readFile(sourcePath)).all()).program();
+    auto ast=glop::Parser(glop::Lexer(glop::gSourceText).all()).program();
     if(checkOnly){
       printChaosSuccess("SOURCE CHECKED. NO GOBLINS FOUND.", gPlainDiagnostics);
       return 0;
@@ -631,5 +650,5 @@ int main(int argc,char**argv){
     return 0;
   }catch(const glop::Error&e){std::cerr<<chaosDiagnostic(e.what(), gPlainDiagnostics, e.hasPos?&e.pos:nullptr)<<"\n";return 1;}
   catch(const glop::ReturnSignal&){std::cerr<<"GLOP-E2003 [YEET CRIME]\\n  YEET ESCAPED A WIZARD. THIS IS NOT A NORMAL EXIT.\\n  Technical: YEET outside WIZARD\\n";return 1;}
-  catch(...){std::cerr<<chaosDiagnostic("unknown runtime failure", plain)<<"\n";return 1;}
+  catch(...){std::cerr<<chaosDiagnostic("unknown runtime failure", gPlainDiagnostics)<<"\n";return 1;}
 }

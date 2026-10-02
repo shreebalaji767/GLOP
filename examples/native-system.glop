@@ -1,0 +1,6 @@
+// GLOP 0.6 native system library
+YAP BONK TIME_MS
+YAP BONK CWD
+YAP BONK JOIN_PATH("runtime", "native", "glop.cpp")
+YAP BONK ENV("PATH")
+YAP BONK ARGS()

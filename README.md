@@ -32,3 +32,25 @@ node src/cli.js compile examples/hello.glop\nnode src/cli.js build examples/hell
 
 GLOP 0.3 is the native-runtime foundation for a future VM, modules, classes, package manager,
 formatter, debugger, REPL and browser playground.
+
+
+## Dependency-free native GLOP
+
+GLOP now has a standalone native executable source at `runtime/native/glop.cpp`.
+
+Build it with a C++17 compiler:
+
+```text
+cmake -S runtime/native -B build
+cmake --build build --config Release
+```
+
+The resulting `glop` executable can run GLOP source directly:
+
+```text
+glop hello.glop
+```
+
+After the executable is built, running a GLOP program does **not** require Node.js, npm, Python, Java, or another language runtime.
+
+The native frontend/runtime is the first step toward the final self-contained GLOP toolchain. The existing JavaScript compiler remains a bootstrap/development tool while the native compiler and full standard library are expanded.

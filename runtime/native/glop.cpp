@@ -172,13 +172,7 @@ struct Binary:Expr{std::string op;std::unique_ptr<Expr>a,b; Binary(std::string o
   if(op=="==")return valueEqual(x,y);if(op=="!=")return !valueEqual(x,y);if(op=="<")return num(x)<num(y);if(op=="<=")return num(x)<=num(y);if(op==">")return num(x)>num(y);if(op==">=")return num(x)>=num(y);throw Error("unknown operator "+op);
 }};
 struct Member:Expr{std::unique_ptr<Expr>o;std::string k;Value eval(std::shared_ptr<Env>e)override;};
-struct SuperMember:Expr{std::string k;explicit SuperMember(std::string x):k(std::move(x)){}Value eval(std::shared_ptr<Env>e)override{
-  auto tv=e->get("THIS"); auto ip=std::get_if<std::shared_ptr<Instance>>(&tv.v); if(!ip||!*ip) throw Error("SUPER used outside an instance method");
-  auto self=*ip; auto it=e->vars.find("__SUPER_OWNER"); if(it==e->vars.end()) throw Error("SUPER has no owning class");
-  auto cp=std::get_if<std::shared_ptr<Class>>(&it->second.v); if(!cp||!*cp||!(*cp)->parent) throw Error("SUPER has no parent class");
-  auto method=(*cp)->parent->findMethod(k); if(!method) throw Error("SUPER method not found: "+k);
-  return std::function<Value(const std::vector<Value>&)>([method,self](const std::vector<Value>&args){return method->call(args,Value(self));});
-}};
+struct SuperMember:Expr{std::string k;explicit SuperMember(std::string x):k(std::move(x)){}Value eval(std::shared_ptr<Env>e)override;};
 struct Index:Expr{std::unique_ptr<Expr>o,i;Value eval(std::shared_ptr<Env>e)override{auto x=o->eval(e),q=i->eval(e);size_t n=(size_t)num(q);if(auto p=std::get_if<std::shared_ptr<Value::Array>>(&x.v)){double d=num(q);if(d<0||std::floor(d)!=d)throw Error("array index must be an integer");if(n>=(*p)->size())throw Error("array index out of range");return (*p)->at(n);}throw Error("index requires array");}};
 
 struct Function {
@@ -201,6 +195,22 @@ struct Function {
   }
   return Value();
 }};
+Value SuperMember::eval(std::shared_ptr<Env>e){
+  auto tv=e->get("THIS");
+  auto ip=std::get_if<std::shared_ptr<Instance>>(&tv.v);
+  if(!ip||!*ip) throw Error("SUPER used outside an instance method");
+  auto self=*ip;
+  auto it=e->vars.find("__SUPER_OWNER");
+  if(it==e->vars.end()) throw Error("SUPER has no owning class");
+  auto cp=std::get_if<std::shared_ptr<Class>>(&it->second.v);
+  if(!cp||!*cp||!(*cp)->parent) throw Error("SUPER has no parent class");
+  auto method=(*cp)->parent->findMethod(k);
+  if(!method) throw Error("SUPER method not found: "+k);
+  return std::function<Value(const std::vector<Value>&)>(
+    [method,self](const std::vector<Value>&args){return method->call(args,Value(self));}
+  );
+}
+
 Value Member::eval(std::shared_ptr<Env>e){auto x=o->eval(e);if(auto ip=std::get_if<std::shared_ptr<Instance>>(&x.v)){auto inst=*ip;if(inst->fields.count(k))return inst->fields.at(k);auto method=inst->klass->findMethod(k);if(method){return std::function<Value(const std::vector<Value>&)>([method,inst](const std::vector<Value>&args){return method->call(args,Value(inst));});}throw Error("unknown instance member: "+k);}auto p=std::get_if<std::shared_ptr<Value::Object>>(&x.v);if(!p)throw Error("member access requires object or instance");return (*p)->count(k)?(*p)->at(k):Value();}
 
 struct Call:Expr{std::unique_ptr<Expr>f;std::vector<std::unique_ptr<Expr>>args;Value eval(std::shared_ptr<Env>e)override{auto v=f->eval(e);auto p=std::get_if<std::shared_ptr<Function>>(&v.v);auto nf=std::get_if<std::function<Value(const std::vector<Value>&)>>(&v.v);

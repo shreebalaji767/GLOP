@@ -139,3 +139,22 @@ Module behavior:
 - native `.gbc` bundling of multi-file modules is not enabled yet; `glop build` rejects module programs instead of producing a misleading artifact
 
 The module system is deliberately path-based now; a package registry and dependency manager can build on this resolver later.
+
+
+## REPL
+
+GLOP now has a persistent interactive shell:
+
+```text
+glop repl
+GLOP> GLOP x = 10
+GLOP> YAP x + 5
+15
+GLOP> WIZARD add(a,b) {
+...   YEET a + b
+... }
+GLOP> YAP BONK add(2,3)
+5
+```
+
+The REPL keeps its global environment between submissions, understands multi-line blocks, and supports `.help`, `.clear`, and `.exit`.

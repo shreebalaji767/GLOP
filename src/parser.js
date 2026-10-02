@@ -185,7 +185,7 @@ export class Parser{
    if(this.check(",")||this.check(")")||this.check("eof"))
     throw new GlopParseError("Expected expression for call argument",this.peek());
 
-   args.push(this.expression());
+   console.log("CALLTOK",JSON.stringify(this.peek())); args.push(this.expression());
 
    if(this.match(")"))break;
    this.expect(",","Expected , or ) after call argument");

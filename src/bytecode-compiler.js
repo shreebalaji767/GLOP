@@ -88,17 +88,27 @@ export class BytecodeCompiler {
         this.b.emit(OP.RETURN);
         break;
 
-      case "Assignment":
-        this.expr(n.value);
+      case "Assignment": {
         if (n.target.type !== "Identifier") {
           throw new Error("Bytecode backend only supports identifier assignment");
         }
-        if (this.locals && this.locals.has(n.target.name)) {
-          this.b.emit(OP.STORE_LOCAL, this.locals.get(n.target.name));
+        const local = this.localIndex(n.target.name);
+        if (n.op !== "=") {
+          if (local !== null) this.b.emit(OP.LOAD_LOCAL, local);
+          else this.b.emit(OP.LOAD_GLOBAL, n.target.name);
+          this.expr(n.value);
+          const op = {
+            "+=": OP.ADD, "-=": OP.SUB, "*=": OP.MUL, "/=": OP.DIV
+          }[n.op];
+          if (!op) throw new Error("Unsupported assignment operator: " + n.op);
+          this.b.emit(op);
         } else {
-          this.b.emit(OP.STORE_GLOBAL, n.target.name);
+          this.expr(n.value);
         }
+        if (local !== null) this.b.emit(OP.STORE_LOCAL, local);
+        else this.b.emit(OP.STORE_GLOBAL, n.target.name);
         break;
+      }
 
       case "While": {
         const start = this.b.code.length;

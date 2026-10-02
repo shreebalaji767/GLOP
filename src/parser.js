@@ -1,4 +1,4 @@
-import{node}from"./ast.js";
+import{node as makeNode}from"./ast.js";
 export class GlopParseError extends Error{constructor(message,t){super(`${message} at ${t.line}:${t.column}`);}}
 export class Parser{
  constructor(tokens){this.tokens=tokens;this.i=0} peek(){return this.tokens[this.i]} advance(){return this.tokens[this.i++]} prev(){return this.tokens[this.i-1]}
@@ -34,7 +34,7 @@ export class Parser{
   if(this.match("=")){const value=this.expression();this.match(";");return node("Assignment",{target:expression,op:"=",value})}
   this.match(";");return node("ExpressionStatement",{expression})
  }
- expression(){return this.binary(0)}
+ expression(){Parser.currentLocation={line:this.peek().line,column:this.peek().column};return this.binary(0)}
  binary(min){let left=this.unary();const p={"||":1,"&&":2,"==":3,"!=":3,"<":4,">":4,"<=":4,">=":4,"+":5,"-":5,"*":6,"/":6,"%":6};while(this.peek().type==="operator"&&p[this.peek().value]>=min){const op=this.advance().value;left=node("Binary",{left,op,right:this.binary(p[op]+1)})}return left}
  unary(){if(this.match("!"))return node("Unary",{op:"!",argument:this.unary()});if(this.match("-"))return node("Unary",{op:"-",argument:this.unary()});return this.postfix(this.primary())}
  postfix(e){for(;;){if(this.match("(")){const args=[];if(!this.check(")")){do args.push(this.expression());while(this.match(","))}this.expect(")");e=node("Call",{callee:e,args});continue}if(this.match("[")){const index=this.expression();this.expect("]");e=node("Index",{object:e,index});continue}if(this.match(".")){e=node("Member",{object:e,property:this.expect("identifier").value});continue}break}return e}

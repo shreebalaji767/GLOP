@@ -29,7 +29,7 @@ struct Token { enum Kind { ID, NUM, STR, OP, PUNC, END } kind; std::string text;
 
 class Lexer {
   std::string s; size_t p=0; int line=1,col=1;
-  std::unordered_map<std::string,bool> kw{{"GLOP",1},{"YAP",1},{"SUS",1},{"NAH",1},{"SPIN",1},{"WIZARD",1},{"YEET",1},{"BASED",1},{"CAP",1},{"VOID",1},{"OOPSIE",1},{"TRY",1},{"CATCH",1},{"NOPE",1},{"ZOOM",1},{"BONK",1},{"OOPS",1},{"NEW",1},{"THIS",1},{"EXTENDS",1}};
+  std::unordered_map<std::string,bool> kw{{"GLOP",1},{"YAP",1},{"SUS",1},{"NAH",1},{"SPIN",1},{"WIZARD",1},{"YEET",1},{"BASED",1},{"CAP",1},{"VOID",1},{"OOPSIE",1},{"TRY",1},{"CATCH",1},{"NOPE",1},{"ZOOM",1},{"BONK",1},{"OOPS",1},{"NEW",1},{"THIS",1},{"SUPER",1},{"EXTENDS",1}};
   char peek(size_t n=0) const { return p+n<s.size()?s[p+n]:'\0'; }
   char take(){char c=peek();if(!c)return 0;p++;if(c=='\n'){line++;col=1;}else col++;return c;}
 public:
@@ -121,10 +121,17 @@ struct Binary:Expr{std::string op;std::unique_ptr<Expr>a,b; Binary(std::string o
   if(op=="==")return show(x)==show(y);if(op=="!=")return show(x)!=show(y);if(op=="<")return num(x)<num(y);if(op=="<=")return num(x)<=num(y);if(op==">")return num(x)>num(y);if(op==">=")return num(x)>=num(y);throw Error("unknown operator "+op);
 }};
 struct Member:Expr{std::unique_ptr<Expr>o;std::string k;Value eval(std::shared_ptr<Env>e)override;};
+struct SuperMember:Expr{std::string k;explicit SuperMember(std::string x):k(std::move(x)){}Value eval(std::shared_ptr<Env>e)override{
+  auto tv=e->get("THIS"); auto ip=std::get_if<std::shared_ptr<Instance>>(&tv.v); if(!ip||!*ip) throw Error("SUPER used outside an instance method");
+  auto self=*ip; auto it=e->vars.find("__SUPER_OWNER"); if(it==e->vars.end()) throw Error("SUPER has no owning class");
+  auto cp=std::get_if<std::shared_ptr<Class>>(&it->second.v); if(!cp||!*cp||!(*cp)->parent) throw Error("SUPER has no parent class");
+  auto method=(*cp)->parent->findMethod(k); if(!method) throw Error("SUPER method not found: "+k);
+  return std::function<Value(const std::vector<Value>&)>([method,self](const std::vector<Value>&args){return method->call(args,Value(self));});
+}};
 struct Index:Expr{std::unique_ptr<Expr>o,i;Value eval(std::shared_ptr<Env>e)override{auto x=o->eval(e),q=i->eval(e);size_t n=(size_t)num(q);if(auto p=std::get_if<std::shared_ptr<Value::Array>>(&x.v)){double d=num(q);if(d<0||std::floor(d)!=d)throw Error("array index must be an integer");if(n>=(*p)->size())throw Error("array index out of range");return (*p)->at(n);}throw Error("index requires array");}};
 
-struct Function {std::vector<std::string>params;std::vector<std::unique_ptr<Stmt>> body;std::shared_ptr<Env>closure;Value call(const std::vector<Value>&args, Value thisValue=Value()){
-  if(args.size()!=params.size())throw Error("wrong argument count");auto e=std::make_shared<Env>(closure);if(!std::holds_alternative<std::monostate>(thisValue.v))e->vars["THIS"]=thisValue;for(size_t i=0;i<args.size();i++)e->vars[params[i]]=args[i];
+struct Function {std::weak_ptr<Class> ownerClass; std::vector<std::string>params;std::vector<std::unique_ptr<Stmt>> body;std::shared_ptr<Env>closure;Value call(const std::vector<Value>&args, Value thisValue=Value()){
+  if(args.size()!=params.size())throw Error("wrong argument count");auto e=std::make_shared<Env>(closure);if(!std::holds_alternative<std::monostate>(thisValue.v)){e->vars["THIS"]=thisValue; if(auto owner=ownerClass.lock()) e->vars["__SUPER_OWNER"]=Value(owner);}for(size_t i=0;i<args.size();i++)e->vars[params[i]]=args[i];
   try{for(auto&s:body)s->exec(e);}catch(ReturnSignal&r){return r.value;}return Value();
 }};
 Value Member::eval(std::shared_ptr<Env>e){auto x=o->eval(e);if(auto ip=std::get_if<std::shared_ptr<Instance>>(&x.v)){auto inst=*ip;if(inst->fields.count(k))return inst->fields.at(k);auto method=inst->klass->findMethod(k);if(method){return std::function<Value(const std::vector<Value>&)>([method,inst](const std::vector<Value>&args){return method->call(args,Value(inst));});}throw Error("unknown instance member: "+k);}auto p=std::get_if<std::shared_ptr<Value::Object>>(&x.v);if(!p)throw Error("member access requires object or instance");return (*p)->count(k)?(*p)->at(k):Value();}
@@ -185,7 +192,7 @@ struct TargetAssign:Stmt{
 };
 struct FnDecl:Stmt{std::string n;std::vector<std::string>p;std::vector<std::unique_ptr<Stmt>>b; FnDecl(std::string x,std::vector<std::string>q,std::vector<std::unique_ptr<Stmt>>z):n(std::move(x)),p(std::move(q)),b(std::move(z)){}void exec(std::shared_ptr<Env>e)override{auto f=std::make_shared<Function>();f->params=p;f->body=std::move(b);f->closure=e;e->vars[n]=f;}};
 struct MethodDef { std::string n; std::vector<std::string> p; std::vector<std::unique_ptr<Stmt>> b; };
-struct ClassDecl:Stmt{std::string n,parentName;std::vector<MethodDef>methods; ClassDecl(std::string x,std::string p,std::vector<MethodDef>m):n(std::move(x)),parentName(std::move(p)),methods(std::move(m)){}void exec(std::shared_ptr<Env>e)override{auto c=std::make_shared<Class>();c->name=n;c->closure=e;if(!parentName.empty()){auto pv=e->get(parentName);auto pp=std::get_if<std::shared_ptr<Class>>(&pv.v);if(!pp||!*pp)throw Error("OOPS parent is not a class: "+parentName);c->parent=*pp;}for(auto&d:methods){auto f=std::make_shared<Function>();f->params=d.p;f->body=std::move(d.b);f->closure=e;c->methods[d.n]=f;}e->vars[n]=c;}};
+struct ClassDecl:Stmt{std::string n,parentName;std::vector<MethodDef>methods; ClassDecl(std::string x,std::string p,std::vector<MethodDef>m):n(std::move(x)),parentName(std::move(p)),methods(std::move(m)){}void exec(std::shared_ptr<Env>e)override{auto c=std::make_shared<Class>();c->name=n;c->closure=e;if(!parentName.empty()){auto pv=e->get(parentName);auto pp=std::get_if<std::shared_ptr<Class>>(&pv.v);if(!pp||!*pp)throw Error("OOPS parent is not a class: "+parentName);c->parent=*pp;}for(auto&d:methods){auto f=std::make_shared<Function>();f->params=d.p;f->body=std::move(d.b);f->closure=e;f->ownerClass=c;c->methods[d.n]=f;}e->vars[n]=c;}};
 struct NewExpr:Expr{std::unique_ptr<Expr>klass;std::vector<std::unique_ptr<Expr>>args;Value eval(std::shared_ptr<Env>e)override{auto cv=klass->eval(e);auto cp=std::get_if<std::shared_ptr<Class>>(&cv.v);if(!cp)throw Error("NEW target is not a class");auto inst=std::make_shared<Instance>();inst->klass=*cp;auto it=(*cp)->findMethod("init");std::vector<Value>a;for(auto&x:args)a.push_back(x->eval(e));if(it)it->second->call(a,Value(inst));else if(!a.empty())throw Error("constructor init not found");return inst;}};
 
 class Parser {
@@ -221,7 +228,7 @@ public:
   if(x.kind==Token::STR)return std::make_unique<Literal>(x.text);
   if(x.text=="BASED")return std::make_unique<Literal>(true);if(x.text=="CAP")return std::make_unique<Literal>(false);if(x.text=="VOID")return std::make_unique<Literal>(Value());
   if(x.text=="BONK"){auto f=std::make_unique<Name>(take().text);need("(");auto c=std::make_unique<Call>();c->f=std::move(f);if(!at(")")){do{c->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");return c;}
-  if(x.text=="NEW"){auto n=std::make_unique<NewExpr>();n->klass=std::make_unique<Name>(take().text);need("(");if(!at(")")){do{n->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");return n;}
+  if(x.text=="SUPER"){auto n=take().text;return std::make_unique<SuperMember>(n);} if(x.text=="NEW"){auto n=std::make_unique<NewExpr>();n->klass=std::make_unique<Name>(take().text);need("(");if(!at(")")){do{n->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");return n;}
   if(x.kind==Token::ID)return std::make_unique<Name>(x.text);
   if(x.text=="("){auto a=expr();need(")");return a;}
   if(x.text=="["){auto a=std::make_unique<ArrayExpr>();if(!at("]")){do{a->a.push_back(expr());}while(at(",")&&take().text==",");}need("]");return a;}
@@ -296,6 +303,14 @@ static Value nativePop(const std::vector<Value>& a){
   if(!p) throw Error("POP expects an array");
   if((*p)->empty()) throw Error("POP from empty array");
   Value x=(*p)->back(); (*p)->pop_back(); return x;
+}
+static Value nativeInstanceOf(const std::vector<Value>& a){
+  if(a.size()!=2) throw Error("INSTANCEOF expects 2 arguments");
+  auto ip=std::get_if<std::shared_ptr<Instance>>(&a[0].v);
+  auto cp=std::get_if<std::shared_ptr<Class>>(&a[1].v);
+  if(!ip||!*ip||!cp||!*cp) return false;
+  for(auto k=(*ip)->klass;k;k=k->parent) if(k==*cp) return true;
+  return false;
 }
 static Value nativeType(const std::vector<Value>& a){
   if(a.size()!=1) throw Error("TYPE expects 1 argument");
@@ -493,7 +508,7 @@ int main(int argc,char**argv){
       std::cout<<"usage: glop <program.glop> [args...]\n";
       std::cout<<"       glop check <program.glop>\n";
       std::cout<<"       glop --version\n";
-      std::cout<<"built-ins: LEN PUSH POP TYPE ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS HAS KEYS RANGE NUMBER ARGS TIME_MS SLEEP_MS ENV CWD JOIN_PATH MIN MAX POW CLAMP ASSERT REPEAT TRIM REPLACE SPLIT JOIN\n";
+      std::cout<<"built-ins: LEN PUSH POP TYPE INSTANCEOF ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS HAS KEYS RANGE NUMBER ARGS TIME_MS SLEEP_MS ENV CWD JOIN_PATH MIN MAX POW CLAMP ASSERT REPEAT TRIM REPLACE SPLIT JOIN\n";
       std::cout<<"diagnostics: chaotic by default; use --plain for boring machine-friendly output\n";
       return argc<2 ? 2 : 0;
     }
@@ -513,6 +528,7 @@ int main(int argc,char**argv){
     env->vars["PUSH"]=glop::Value(glop::nativePush);
     env->vars["POP"]=glop::Value(glop::nativePop);
     env->vars["TYPE"]=glop::Value(glop::nativeType);
+    env->vars["INSTANCEOF"]=glop::Value(glop::nativeInstanceOf);
     env->vars["ABS"]=glop::Value(glop::nativeAbs);
     env->vars["SQRT"]=glop::Value(glop::nativeSqrt);
     env->vars["FLOOR"]=glop::Value(glop::nativeFloor);

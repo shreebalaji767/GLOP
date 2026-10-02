@@ -39,34 +39,13 @@ export class Parser{
  expression(){Parser.currentLocation={line:this.peek().line,column:this.peek().column};return this.binary(0)}
  binary(min){let left=this.unary();const p={"||":1,"&&":2,"==":3,"!=":3,"<":4,">":4,"<=":4,">=":4,"+":5,"-":5,"*":6,"/":6,"%":6};while(this.peek().type==="operator"&&p[this.peek().value]>=min){const op=this.advance().value;left=node("Binary",{left,op,right:this.binary(p[op]+1)})}return left}
  unary(){if(this.match("!"))return node("Unary",{op:"!",argument:this.unary()});if(this.match("-"))return node("Unary",{op:"-",argument:this.unary()});return this.postfix(this.primary())}
- finishCall(callee){
-  this.expect("(");
-  const args=[];
-  if(this.check(")")){this.advance();return node("Call",{callee,args})}
-  if(this.check(",")||this.check("eof"))throw new GlopParseError("Expected expression after (",this.peek());
-  while(true){
-   args.push(this.expression());
-   if(this.match(")"))break;
-   if(!this.match(","))throw new GlopParseError("Expected , or ) after call argument",this.peek());
-   if(this.check(")")||this.check("eof")||this.check(","))throw new GlopParseError("Expected expression after comma",this.peek());
-  }
-  return node("Call",{callee,args});
- }
- postfix(e){
-  for(;;){
-   if(this.check("(")){e=this.finishCall(e);continue}
-   if(this.match("[")){const index=this.expression();this.expect("]");e=node("Index",{object:e,index});continue}
-   if(this.match(".")){e=node("Member",{object:e,property:this.expect("identifier").value});continue}
-   break
-  }
-  return e
- }
+ postfix(e){for(;;){if(this.match("(")){const args=[];if(!this.check(")")){do args.push(this.expression());while(this.match(","))}this.expect(")");e=node("Call",{callee:e,args});continue}if(this.match("[")){const index=this.expression();this.expect("]");e=node("Index",{object:e,index});continue}if(this.match(".")){e=node("Member",{object:e,property:this.expect("identifier").value});continue}break}return e}
  primary(){
   const t=this.peek();
 
   if(this.match("number")||this.match("string"))return node("Literal",{value:t.value});
   if(this.match("BASED"))return node("Literal",{value:true});if(this.match("CAP"))return node("Literal",{value:false});if(this.match("VOID"))return node("Literal",{value:null});
-  if(this.match("BONK")){let callee;if(this.check("identifier")||/^[A-Z_][A-Z0-9_]*$/.test(String(this.peek().value))){const name=this.advance().value;callee=node("Identifier",{name});}else throw new GlopParseError("BONK requires a callable name",this.peek());while(true){if(this.match(".")){callee=node("Member",{object:callee,property:this.expect("identifier").value});continue}if(this.match("[")){const index=this.expression();this.expect("]");callee=node("Index",{object:callee,index});continue}break}return this.finishCall(callee)}
+  if(this.match("BONK")){let callee=this.primary();for(;;){if(this.match(".")){callee=node("Member",{object:callee,property:this.expect("identifier").value});continue}if(this.match("[")){const index=this.expression();this.expect("]");callee=node("Index",{object:callee,index});continue}break}this.expect("(");const args=[];if(!this.check(")")){do args.push(this.expression());while(this.match(","))}this.expect(")");return node("Call",{callee,args})}
   if(t?.type==="identifier"||/^[A-Z_][A-Z0-9_]*$/.test(String(t.value))){this.advance();return node("Identifier",{name:t.value});}
   if(this.match("(")){const e=this.expression();this.expect(")");return e}
   if(this.match("[")){const elements=[];if(!this.check("]")){do elements.push(this.expression());while(this.match(","))}this.expect("]");return node("Array",{elements})}

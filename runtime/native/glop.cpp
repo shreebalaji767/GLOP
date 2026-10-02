@@ -249,44 +249,47 @@ struct ClassDecl:Stmt{std::string n,parentName;std::vector<MethodDef>methods; Cl
     for(auto&d:methods){auto f=std::make_shared<Function>();f->name=n+"."+d.n;f->params=d.p;f->body=std::move(d.b);f->closure=e;f->ownerClass=c;c->methods[d.n]=f;}e->vars[n]=c;}};
 struct NewExpr:Expr{std::unique_ptr<Expr>klass;std::vector<std::unique_ptr<Expr>>args;Value eval(std::shared_ptr<Env>e)override{auto cv=klass->eval(e);auto cp=std::get_if<std::shared_ptr<Class>>(&cv.v);if(!cp)throw Error("NEW target is not a class");auto inst=std::make_shared<Instance>();inst->klass=*cp;auto it=(*cp)->findMethod("init");std::vector<Value>a;for(auto&x:args)a.push_back(x->eval(e));if(it)it->second->call(a,Value(inst));else if(!a.empty())throw Error("constructor init not found");return inst;}};
 
-class Parser {
+ class Parser {
  std::vector<Token>t;size_t i=0;
+ template<class T> std::unique_ptr<T> mark(std::unique_ptr<T> n,const Token& x){n->pos={x.line,x.col};return n;}
+ SourcePos here() const {return {cur().line,cur().col};}
  Token&cur(){return t[i];}bool at(const std::string&s){return cur().text==s;}Token take(){return t[i++];}
- void need(const std::string&s){if(!at(s))throw Error("expected "+s+" at "+std::to_string(cur().line)+":"+std::to_string(cur().col));take();}
+ void need(const std::string&s){if(!at(s))throw Error("expected "+s,here());take();}
  std::unique_ptr<Block> block(){need("{");auto b=std::make_unique<Block>();while(!at("}")&&cur().kind!=Token::END)b->s.push_back(stmt());need("}");return b;}
 public:
  explicit Parser(std::vector<Token>x):t(std::move(x)){}
  std::vector<std::unique_ptr<Stmt>> program(){std::vector<std::unique_ptr<Stmt>>x;while(cur().kind!=Token::END)x.push_back(stmt());return x;}
  std::unique_ptr<Stmt> stmt(){
-  if(at("GLOP")){take();auto n=take().text;need("=");auto v=expr();if(at(";"))take();return std::make_unique<Var>(Var{n,std::move(v)});}
-  if(at("YAP")){take();auto v=expr();if(at(";"))take();return std::make_unique<Print>(Print{std::move(v)});}
-  if(at("YEET")){take();auto v=at("}")?std::make_unique<Literal>(Value()):expr();if(at(";"))take();return std::make_unique<Return>(Return{std::move(v)});}
-  if(at("OOPSIE")){take();auto v=expr();if(at(";"))take();return std::make_unique<Throw>(Throw{std::move(v)});}
-  if(at("NOPE")){take();if(at(";"))take();return std::make_unique<Break>();}
-  if(at("ZOOM")){take();if(at(";"))take();return std::make_unique<Continue>();}
-  if(at("TRY")){take();auto b=block();if(!at("CATCH"))throw Error("TRY requires CATCH");take();auto n=take().text;auto h=block();return std::make_unique<TryCatch>(TryCatch{std::move(b),std::move(h),n});}
+  Token start=cur();
+  if(at("GLOP")){take();auto n=take().text;need("=");auto v=expr();if(at(";"))take();return mark(std::make_unique<Var>(Var{n,std::move(v)}),start);}
+  if(at("YAP")){take();auto v=expr();if(at(";"))take();return mark(std::make_unique<Print>(Print{std::move(v)}),start);}
+  if(at("YEET")){take();auto v=at("}")?std::make_unique<Literal>(Value()):expr();if(at(";"))take();return mark(std::make_unique<Return>(Return{std::move(v)}),start);}
+  if(at("OOPSIE")){take();auto v=expr();if(at(";"))take();return mark(std::make_unique<Throw>(Throw{std::move(v)}),start);}
+  if(at("NOPE")){take();if(at(";"))take();return mark(std::make_unique<Break>(),start);}
+  if(at("ZOOM")){take();if(at(";"))take();return mark(std::make_unique<Continue>(),start);}
+  if(at("TRY")){take();auto b=block();if(!at("CATCH"))throw Error("TRY requires CATCH");take();auto n=take().text;auto h=block();return mark(std::make_unique<TryCatch>(TryCatch{std::move(b),std::move(h),n}),start);}
   if(at("GLOP"))throw Error("unreachable");
-  if(at("WIZARD")){take();auto n=take().text;need("(");std::vector<std::string>p;if(!at(")")){do{p.push_back(take().text);}while(at(",")&&take().text==",");}need(")");auto b=block();return std::make_unique<FnDecl>(FnDecl{n,std::move(p),std::move(b->s)});}
-  if(at("OOPS")){take();auto n=take().text;std::string parent;if(at("EXTENDS")){take();parent=take().text;}need("{");std::vector<MethodDef>ms;while(!at("}")){if(!at("WIZARD"))throw Error("OOPS class body accepts WIZARD methods only");take();auto mn=take().text;need("(");std::vector<std::string>p;if(!at(")")){do{p.push_back(take().text);}while(at(",")&&take().text==",");}need(")");auto b=block();ms.push_back(MethodDef{mn,std::move(p),std::move(b->s)});}need("}");return std::make_unique<ClassDecl>(ClassDecl{n,parent,std::move(ms)});}
-  if(at("SUS")){take();auto t=expr();auto a=block();std::unique_ptr<Block>b;if(at("NAH")){take();b=block();}return std::make_unique<If>(If{std::move(t),std::move(a),std::move(b)});}
-  if(at("SPIN")){take();auto t=expr();auto b=block();return std::make_unique<While>(While{std::move(t),std::move(b)});}
-  auto v=expr();if(cur().kind==Token::OP&&std::string("= += -= *= /=").find(cur().text)!=std::string::npos){auto op=take().text;auto x=expr();if(at(";"))take();return std::make_unique<TargetAssign>(TargetAssign{std::move(v),op,std::move(x)});}if(at(";"))take();return std::make_unique<ExprStmt>(ExprStmt{std::move(v)});
+  if(at("WIZARD")){take();auto n=take().text;need("(");std::vector<std::string>p;if(!at(")")){do{p.push_back(take().text);}while(at(",")&&take().text==",");}need(")");auto b=block();return mark(std::make_unique<FnDecl>(FnDecl{n,std::move(p),std::move(b->s)}),start);}
+  if(at("OOPS")){take();auto n=take().text;std::string parent;if(at("EXTENDS")){take();parent=take().text;}need("{");std::vector<MethodDef>ms;while(!at("}")){if(!at("WIZARD"))throw Error("OOPS class body accepts WIZARD methods only");take();auto mn=take().text;need("(");std::vector<std::string>p;if(!at(")")){do{p.push_back(take().text);}while(at(",")&&take().text==",");}need(")");auto b=block();ms.push_back(MethodDef{mn,std::move(p),std::move(b->s)});}need("}");return mark(std::make_unique<ClassDecl>(ClassDecl{n,parent,std::move(ms)}),start);}
+  if(at("SUS")){take();auto t=expr();auto a=block();std::unique_ptr<Block>b;if(at("NAH")){take();b=block();}return mark(std::make_unique<If>(If{std::move(t),std::move(a),std::move(b)}),start);}
+  if(at("SPIN")){take();auto t=expr();auto b=block();return mark(std::make_unique<While>(While{std::move(t),std::move(b)}),start);}
+  auto v=expr();if(cur().kind==Token::OP&&std::string("= += -= *= /=").find(cur().text)!=std::string::npos){auto op=take().text;auto x=expr();if(at(";"))take();return mark(std::make_unique<TargetAssign>(TargetAssign{std::move(v),op,std::move(x)}),start);}if(at(";"))take();return mark(std::make_unique<ExprStmt>(ExprStmt{std::move(v)}),start);
  }
  std::unique_ptr<Expr> expr(){return binary(0);}
- std::unique_ptr<Expr> binary(int min){auto a=unary();static const std::unordered_map<std::string,int>p{{"||",1},{"&&",2},{"==",3},{"!=",3},{"<",4},{"<=",4},{">",4},{">=",4},{"+",5},{"-",5},{"*",6},{"/",6},{"%",6}};while(p.count(cur().text)&&p.at(cur().text)>=min){auto op=take().text;auto b=binary(p.at(op)+1);a=std::make_unique<Binary>(Binary{op,std::move(a),std::move(b)});}return a;}
- std::unique_ptr<Expr> unary(){if(at("!")){take();return std::make_unique<Unary>(Unary{"!",unary()});}if(at("-")){take();return std::make_unique<Unary>(Unary{"-",unary()});}return postfix(primary());}
+ std::unique_ptr<Expr> binary(int min){auto a=unary();static const std::unordered_map<std::string,int>p{{"||",1},{"&&",2},{"==",3},{"!=",3},{"<",4},{"<=",4},{">",4},{">=",4},{"+",5},{"-",5},{"*",6},{"/",6},{"%",6}};while(p.count(cur().text)&&p.at(cur().text)>=min){Token ot=take();auto op=ot.text;auto b=binary(p.at(op)+1);a=mark(std::make_unique<Binary>(Binary{op,std::move(a),std::move(b)}),ot);}return a;}
+ std::unique_ptr<Expr> unary(){if(at("!")){Token ot=take();return mark(std::make_unique<Unary>(Unary{"!",unary()}),ot);}if(at("-")){Token ot=take();return mark(std::make_unique<Unary>(Unary{"-",unary()}),ot);}return postfix(primary());}
  std::unique_ptr<Expr> postfix(std::unique_ptr<Expr>a){while(true){if(at("(")){take();auto c=std::make_unique<Call>();c->f=std::move(a);if(!at(")")){do{c->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");a=std::move(c);continue;}if(at("[")){take();auto x=expr();need("]");auto q=std::make_unique<Index>();q->o=std::move(a);q->i=std::move(x);a=std::move(q);continue;}if(at(".")){take();auto q=std::make_unique<Member>();q->o=std::move(a);q->k=take().text;a=std::move(q);continue;}break;}return a;}
  std::unique_ptr<Expr> primary(){
   auto x=take();
-  if(x.kind==Token::NUM)return std::make_unique<Literal>(x.number);
-  if(x.kind==Token::STR)return std::make_unique<Literal>(x.text);
-  if(x.text=="BASED")return std::make_unique<Literal>(true);if(x.text=="CAP")return std::make_unique<Literal>(false);if(x.text=="VOID")return std::make_unique<Literal>(Value());
-  if(x.text=="BONK"){auto f=std::make_unique<Name>(take().text);need("(");auto c=std::make_unique<Call>();c->f=std::move(f);if(!at(")")){do{c->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");return c;}
-  if(x.text=="SUPER"){auto n=take().text;return std::make_unique<SuperMember>(n);} if(x.text=="NEW"){auto n=std::make_unique<NewExpr>();n->klass=std::make_unique<Name>(take().text);need("(");if(!at(")")){do{n->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");return n;}
-  if(x.kind==Token::ID)return std::make_unique<Name>(x.text);
+  if(x.kind==Token::NUM)return mark(std::make_unique<Literal>(x.number),x);
+  if(x.kind==Token::STR)return mark(std::make_unique<Literal>(x.text),x);
+  if(x.text=="BASED")return mark(std::make_unique<Literal>(true),x);if(x.text=="CAP")return mark(std::make_unique<Literal>(false),x);if(x.text=="VOID")return mark(std::make_unique<Literal>(Value()),x);
+  if(x.text=="BONK"){auto f=mark(std::make_unique<Name>(take().text),x);need("(");auto c=std::make_unique<Call>();c->f=std::move(f);if(!at(")")){do{c->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");return c;}
+  if(x.text=="SUPER"){auto n=take().text;return mark(std::make_unique<SuperMember>(n),x);} if(x.text=="NEW"){auto n=std::make_unique<NewExpr>();n->klass=std::make_unique<Name>(take().text);need("(");if(!at(")")){do{n->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");return mark(std::move(n),x);}
+  if(x.kind==Token::ID)return mark(std::make_unique<Name>(x.text),x);
   if(x.text=="("){auto a=expr();need(")");return a;}
-  if(x.text=="["){auto a=std::make_unique<ArrayExpr>();if(!at("]")){do{a->a.push_back(expr());}while(at(",")&&take().text==",");}need("]");return a;}
-  if(x.text=="{"){auto a=std::make_unique<ObjectExpr>();if(!at("}")){do{auto k=take().text;need(":");a->p.push_back({k,expr()});}while(at(",")&&take().text==",");}need("}");return a;}
+  if(x.text=="["){auto a=std::make_unique<ArrayExpr>();if(!at("]")){do{a->a.push_back(expr());}while(at(",")&&take().text==",");}need("]");return mark(std::move(a),x);}
+  if(x.text=="{"){auto a=std::make_unique<ObjectExpr>();if(!at("}")){do{auto k=take().text;need(":");a->p.push_back({k,expr()});}while(at(",")&&take().text==",");}need("}");return mark(std::move(a),x);}
   throw Error("expected expression at "+std::to_string(x.line)+":"+std::to_string(x.col));
  }
 };

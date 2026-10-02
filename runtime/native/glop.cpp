@@ -18,7 +18,11 @@
 
 namespace glop {
 
-struct Error : std::runtime_error { using std::runtime_error::runtime_error; };
+struct Error : std::runtime_error {
+  using std::runtime_error::runtime_error;
+  SourcePos pos; bool hasPos=false;
+  Error(std::string message, SourcePos p):std::runtime_error(std::move(message)),pos(std::move(p)),hasPos(true){}
+};
 struct Value;
 struct ReturnSignal;
 struct BreakSignal {};
@@ -26,6 +30,7 @@ struct CatchSignal { std::string message; };
 struct ContinueSignal {};
 
 struct Token { enum Kind { ID, NUM, STR, OP, PUNC, END } kind; std::string text; double number=0; int line=1,col=1; };
+struct SourcePos { int line=1,col=1; std::string describe() const { return std::to_string(line)+":"+std::to_string(col); } };
 
 class Lexer {
   std::string s; size_t p=0; int line=1,col=1;

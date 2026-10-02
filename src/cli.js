@@ -9,11 +9,12 @@ import { writeGBC, readGBC } from "./gbc.js";
 import { runBytecode } from "./vm.js";
 import { ModuleLoader } from "./module-loader.js";
 import { bundleModules } from "./module-bundler.js";
+import { disassemble } from "./disassembler.js";
 
 const [, , cmd, file, ...rest] = process.argv;
 
 if (cmd === "repl") {\n  const { startRepl } = await import("./repl.js");\n  await startRepl();\n  process.exit(0);\n}\n\nif (!cmd || !file) {
-  console.log("GLOP 0.11.0\n\n glop run <file.glop|file.gbc>\n glop repl\n glop compile <file.glop> [-o out.mjs]\n glop check <file.glop>\n glop build <file.glop> [-o out.gbc]\n glop tokens <file.glop>");
+  console.log("GLOP 0.11.0\n\n glop run <file.glop|file.gbc>\n glop repl\n glop compile <file.glop> [-o out.mjs]\n glop check <file.glop>\n glop build <file.glop> [-o out.gbc]\n glop tokens <file.glop>\n glop dump <file.glop|file.gbc>");
   process.exit(cmd ? 1 : 0);
 }
 
@@ -27,7 +28,7 @@ try {
   const tokens = lex(source);
   const ast = parse(tokens);
 
-  if (cmd === "tokens") {
+  if (cmd === "dump") {\n    if (file.toLowerCase().endsWith(".gbc")) {\n      console.log(disassemble(readGBC(file)));\n    } else {\n      const program = ast.body.some(s => s.type === "ImportDecl" || s.type === "ExportDecl")\n        ? bundleModules(file).ast\n        : ast;\n      analyze(program);\n      console.log(disassemble(compileBytecode(program)));\n    }\n    process.exit(0);\n  }\n\n  if (cmd === "tokens") {
     console.log(JSON.stringify(tokens, null, 2));
     process.exit(0);
   }

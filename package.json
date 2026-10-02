@@ -1,7 +1,17 @@
 {
-  "name":"glop-language","version":"0.1.0","type":"module",
-  "description":"GLOP — an absurd but real programming language.",
-  "bin":{"glop":"./src/cli.js"},
-  "scripts":{"test":"node tests/run-tests.js","run":"node src/cli.js run","compile":"node src/cli.js compile"},
-  "engines":{"node":">=18"}
+  "name": "glop-language",
+  "version": "0.2.0",
+  "type": "module",
+  "description": "GLOP — an absurd but real programming language.",
+  "bin": {
+    "glop": "./src/cli.js"
+  },
+  "scripts": {
+    "test": "node tests/run-tests.js && node tests/semantic-tests.js && node tests/bytecode-tests.js",
+    "run": "node src/cli.js run",
+    "compile": "node src/cli.js compile"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }

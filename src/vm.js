@@ -25,7 +25,7 @@ export class VM {
   run(){
     while(true){
       if(this.ip>=this.chunk.code.length)throw new GlopRuntimeError("instruction pointer escaped bytecode");
-      const offset=this.ip;const ins=this.chunk.code[this.ip++];if(this.trace)this.traceOutput(`[GLOP TRACE] ${this.chunk.name||"<main>"} @${offset} ${ins.op}${ins.arg===null||ins.arg===undefined?"":" "+ins.arg} | stack=${this.stack.length}`);
+      const offset=this.ip;const ins=this.chunk.code[this.ip++];if(this.trace){const p=ins.loc?` ${ins.loc.line}:${ins.loc.column}`:"";this.traceOutput(`[GLOP TRACE] ${this.chunk.name||"<main>"}${p} @${offset} ${ins.op}${ins.arg===null||ins.arg===undefined?"":" "+ins.arg} | stack=${this.stack.length}`);}
       switch(ins.op){
         case OP.CONST:this.stack.push(this.currentConstants()[ins.arg]);break;
         case OP.LOAD_GLOBAL:if(!this.globals.has(ins.arg))throw new GlopRuntimeError("undefined variable: "+ins.arg);this.stack.push(this.globals.get(ins.arg));break;

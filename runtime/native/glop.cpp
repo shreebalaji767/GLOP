@@ -438,12 +438,9 @@ static std::string readFile(const std::string&f){std::ifstream in(f);if(!in)thro
 int main(int argc,char**argv){
   try{
     if(argc<2){
-      std::cerr<<"GLOP 0.6.0 native runtime
-";
-      std::cerr<<"usage: glop <program.glop> [args...]
-";
-      std::cerr<<"built-ins: LEN PUSH POP TYPE ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS HAS KEYS RANGE NUMBER ARGS TIME_MS SLEEP_MS ENV CWD JOIN_PATH MIN MAX POW CLAMP ASSERT REPEAT TRIM REPLACE SPLIT JOIN
-";
+      std::cerr<<"GLOP 0.7.0 native runtime\n";
+      std::cerr<<"usage: glop <program.glop> [args...]\n";
+      std::cerr<<"built-ins: LEN PUSH POP TYPE ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS HAS KEYS RANGE NUMBER ARGS TIME_MS SLEEP_MS ENV CWD JOIN_PATH MIN MAX POW CLAMP ASSERT REPEAT TRIM REPLACE SPLIT JOIN\n";
       return 2;
     }
     glop::gArgs.assign(argv + 2, argv + argc);
@@ -487,8 +484,6 @@ int main(int argc,char**argv){
     for(auto&s:ast)s->exec(env);
     return 0;
   }catch(const glop::Error&e){std::cerr<<"GLOP OOPSIE: "<<e.what()<<"\n";return 1;}
-   catch(const glop::ReturnSignal&){std::cerr<<"GLOP OOPSIE: YEET outside WIZARD
-";return 1;}
-   catch(...){std::cerr<<"GLOP OOPSIE: unknown runtime failure
-";return 1;}
+  catch(const glop::ReturnSignal&){std::cerr<<"GLOP OOPSIE: YEET outside WIZARD\n";return 1;}
+  catch(...){std::cerr<<"GLOP OOPSIE: unknown runtime failure\n";return 1;}
 }

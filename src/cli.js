@@ -29,6 +29,7 @@ try {
   analyze(ast);
 
   if (cmd === "check") {
+    new ModuleLoader({output:()=>{}}).check(file);
     console.log("GLOP OK: " + file);
     process.exit(0);
   }

@@ -11,7 +11,7 @@ assert.deepEqual(execute("GLOP x=[10,20] x[1]=99 YAP x[1]").output,[99]);
 assert.deepEqual(execute("GLOP p={name:«RAVI»,age:25} YAP p.name YAP p.age").output,["RAVI",25]);
 assert.deepEqual(execute("GLOP p={age:25} p.age=30 YAP p.age").output,[30]);
 assert.deepEqual(execute("GLOP x=[1,2] YAP x[0] YAP x[1]").output,[1,2]);
-assert.deepEqual(execute("GLOP make(){ YEET [1,2,3] } GLOP x=BONK make() YAP x[2]").output,[3]);
+assert.deepEqual(execute("WIZARD make(){ YEET [1,2,3] } GLOP x=BONK make() YAP x[2]").output,[3]);
 
 assert.deepEqual(execute("GLOP x=10 GLOP y=20 YAP x+y").output,[30]);
 assert.deepEqual(execute("WIZARD add(a,b){ YEET a+b } YAP BONK add(10,20)").output,[30]);

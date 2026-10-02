@@ -65,5 +65,6 @@ The dependency-free native runtime now includes:
 - math: `ABS`, `SQRT`, `FLOOR`, `CEIL`
 - strings: `SUBSTR`, `UPPER`, `LOWER`
 - filesystem: `READ_FILE`, `WRITE_FILE`, `EXISTS`
+- collections/conversion: `HAS`, `KEYS`, `RANGE`, `NUMBER`
 
 These are native GLOP runtime functions, not calls into Node.js, Python, or another language runtime.

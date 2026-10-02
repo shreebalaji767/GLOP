@@ -577,7 +577,7 @@ static bool gPlainDiagnostics=false;
 static std::string gSourcePath;
 static std::string gSourceText;
 
-static std::string chaosDiagnostic(const std::string& message, bool plain=false, const SourcePos* pos=nullptr){
+static std::string chaosDiagnostic(const std::string& message, bool plain=false, const glop::SourcePos* pos=nullptr){
   if(plain) return std::string("GLOP ERROR")+(pos?(" at "+pos->describe()):"")+": "+message;
   std::string code="GLOP-E9999",cat="[CHAOS ENGINE]",what="Something went sideways with great confidence.",
               why="The runtime encountered a condition it could not complete normally.",

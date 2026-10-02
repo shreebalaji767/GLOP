@@ -50,3 +50,61 @@ export const encodeGBC=bytecode=>{
 };
 
 export const writeGBC=(bytecode,file)=>fs.writeFileSync(file,encodeGBC(bytecode));
+
+
+class Reader{
+  constructor(buffer){this.b=buffer;this.o=0}
+  need(n){if(this.o+n>this.b.length)throw new Error("GBC OOPSIE: truncated bytecode")}
+  u8(){this.need(1);return this.b[this.o++]}
+  u32(){this.need(4);const v=this.b.readUInt32LE(this.o);this.o+=4;return v}
+  i32(){this.need(4);const v=this.b.readInt32LE(this.o);this.o+=4;return v}
+  f64(){this.need(8);const v=this.b.readDoubleLE(this.o);this.o+=8;return v}
+  string(){const n=this.u32();this.need(n);const s=this.b.subarray(this.o,this.o+n).toString("utf8");this.o+=n;return s}
+}
+
+const readValue=r=>{
+  switch(r.u8()){
+    case 0:return null;
+    case 1:return false;
+    case 2:return true;
+    case 3:return r.f64();
+    case 4:return r.string();
+    default:throw new Error("GBC OOPSIE: invalid constant tag");
+  }
+};
+
+const readArg=r=>{
+  const type=r.u8();
+  if(type===0)return null;
+  if(type===1)return r.i32();
+  if(type===2)return r.string();
+  throw new Error("GBC OOPSIE: invalid instruction argument tag");
+};
+
+const readChunk=r=>{
+  const arity=r.u32(),name=r.string();
+  const freeCount=r.u32(),freeNames=[];for(let i=0;i<freeCount;i++)freeNames.push(r.string());
+  const localCount=r.u32(),localNames={};
+  for(let i=0;i<localCount;i++){const index=r.u32();const localName=r.string();localNames[localName]=index;}
+  const constantCount=r.u32(),constants=[];for(let i=0;i<constantCount;i++)constants.push(readValue(r));
+  const functionCount=r.u32(),functions=[];for(let i=0;i<functionCount;i++)functions.push(readChunk(r));
+  const codeCount=r.u32(),code=[];
+  for(let i=0;i<codeCount;i++){
+    const oi=r.u8();
+    if(oi>=OPS.length)throw new Error("GBC OOPSIE: unknown opcode index "+oi);
+    code.push({op:OPS[oi],arg:readArg(r)});
+  }
+  return {arity,name,freeNames,localNames,constants,functions,code};
+};
+
+export const decodeGBC=buffer=>{
+  const b=Buffer.isBuffer(buffer)?buffer:Buffer.from(buffer);
+  if(b.subarray(0,4).toString("ascii")!=="GBC2")throw new Error("GBC OOPSIE: unsupported or corrupt magic");
+  if(b[4]!==2)throw new Error("GBC OOPSIE: unsupported GBC2 version "+b[4]);
+  const r=new Reader(b);r.o=5;
+  const chunk=readChunk(r);
+  if(r.o!==b.length)throw new Error("GBC OOPSIE: trailing bytes after program");
+  return chunk;
+};
+
+export const readGBC=file=>decodeGBC(fs.readFileSync(file));

@@ -16,8 +16,10 @@
 namespace glop {
 
 struct Error : std::runtime_error { using std::runtime_error::runtime_error; };
-struct ReturnSignal { struct Value value; };
+struct Value;
+struct ReturnSignal { Value value; };
 struct BreakSignal {};
+struct CatchSignal { std::string message; };
 struct ContinueSignal {};
 
 struct Token { enum Kind { ID, NUM, STR, OP, PUNC, END } kind; std::string text; double number=0; int line=1,col=1; };
@@ -92,7 +94,7 @@ struct Unary:Expr{std::string op;std::unique_ptr<Expr>a;Value eval(std::shared_p
 struct Binary:Expr{std::string op;std::unique_ptr<Expr>a,b;Value eval(std::shared_ptr<Env>e)override{
   auto x=a->eval(e);if(op=="&&")return truth(x)?truth(b->eval(e)):false;if(op=="||")return truth(x)?true:truth(b->eval(e));auto y=b->eval(e);
   if(op=="+"){if(std::holds_alternative<std::string>(x.v)&&std::holds_alternative<std::string>(y.v))return std::get<std::string>(x.v)+std::get<std::string>(y.v);return num(x)+num(y);}
-  if(op=="-")return num(x)-num(y);if(op=="*")return num(x)*num(y);if(op=="/")return num(x)/num(y);if(op=="%")return std::fmod(num(x),num(y));
+  if(op=="-")return num(x)-num(y);if(op=="*")return num(x)*num(y);if(op=="/"){auto d=num(y);if(d==0)throw Error("division by zero");return num(x)/d;}if(op=="%")return std::fmod(num(x),num(y));
   if(op=="==")return show(x)==show(y);if(op=="!=")return show(x)!=show(y);if(op=="<")return num(x)<num(y);if(op=="<=")return num(x)<=num(y);if(op==">")return num(x)>num(y);if(op==">=")return num(x)>=num(y);throw Error("unknown operator "+op);
 }};
 struct Member:Expr{std::unique_ptr<Expr>o;std::string k;Value eval(std::shared_ptr<Env>e)override{auto x=o->eval(e);auto p=std::get_if<std::shared_ptr<Value::Object>>(&x.v);if(!p)throw Error("member access requires object");return (*p)->count(k)?(*p)->at(k):Value();}};
@@ -109,12 +111,50 @@ struct Print:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)overrid
 struct ExprStmt:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{v->eval(e);}};
 struct Return:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{throw ReturnSignal{v->eval(e)};}};
 struct Throw:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{throw Error(show(v->eval(e)));}};
-struct Assign:Stmt{std::string n,op;std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{auto x=v->eval(e);if(op!="="){auto old=e->get(n);if(op=="+=")x=Binary{"+",std::make_unique<Literal>(old),std::make_unique<Literal>(x)}.eval(e);else if(op=="-=")x=num(old)-num(x);else if(op=="*=")x=num(old)*num(x);else x=num(old)/num(x);}e->set(n,x);}};
+struct TryCatch:Stmt{
+  std::unique_ptr<Block>body,handler; std::string name;
+  void exec(std::shared_ptr<Env>e)override{
+    try{body->exec(e);}
+    catch(const ReturnSignal&){throw;}
+    catch(const BreakSignal&){throw;}
+    catch(const ContinueSignal&){throw;}
+    catch(const Error&x){auto h=std::make_shared<Env>(e);h->vars[name]=Value(std::string(x.what()));handler->exec(h);}
+  }
+};
+static Value applyAssign(const std::string&op,const Value&old,const Value&rhs){
+  if(op=="=")return rhs;
+  if(op=="+="){if(std::holds_alternative<std::string>(old.v)||std::holds_alternative<std::string>(rhs.v))return show(old)+show(rhs);return num(old)+num(rhs);}
+  if(op=="-=")return num(old)-num(rhs);
+  if(op=="*=")return num(old)*num(rhs);
+  if(op=="/="){auto d=num(rhs);if(d==0)throw Error("division by zero");return num(old)/d;}
+  throw Error("unknown assignment operator "+op);
+}
+struct Assign:Stmt{std::string n,op;std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{e->set(n,applyAssign(op,e->get(n),v->eval(e)));}};
 struct Block:Stmt{std::vector<std::unique_ptr<Stmt>>s;void exec(std::shared_ptr<Env>e)override{auto x=std::make_shared<Env>(e);for(auto&z:s)z->exec(x);}};
 struct If:Stmt{std::unique_ptr<Expr>t;std::unique_ptr<Block>a,b;void exec(std::shared_ptr<Env>e)override{if(truth(t->eval(e)))a->exec(e);else if(b)b->exec(e);}};
 struct While:Stmt{std::unique_ptr<Expr>t;std::unique_ptr<Block>b;void exec(std::shared_ptr<Env>e)override{while(truth(t->eval(e))){try{b->exec(e);}catch(BreakSignal&){break;}catch(ContinueSignal&){}}}};
 struct Break:Stmt{void exec(std::shared_ptr<Env>)override{throw BreakSignal{};}};
 struct Continue:Stmt{void exec(std::shared_ptr<Env>)override{throw ContinueSignal{};}};
+struct TargetAssign:Stmt{
+  std::unique_ptr<Expr>target; std::string op; std::unique_ptr<Expr>value;
+  void exec(std::shared_ptr<Env>e)override{
+    auto rhs=value->eval(e);
+    if(auto n=dynamic_cast<Name*>(target.get())){e->set(n->n,applyAssign(op,e->get(n->n),rhs));return;}
+    if(auto m=dynamic_cast<Member*>(target.get())){
+      auto obj=m->o->eval(e);auto p=std::get_if<std::shared_ptr<Value::Object>>(&obj.v);
+      if(!p)throw Error("member assignment requires object");
+      Value old=(*p)->count(m->k)?(*p)->at(m->k):Value();(*p)[m->k]=applyAssign(op,old,rhs);return;
+    }
+    if(auto q=dynamic_cast<Index*>(target.get())){
+      auto obj=q->o->eval(e),idx=q->i->eval(e);auto p=std::get_if<std::shared_ptr<Value::Array>>(&obj.v);
+      if(!p)throw Error("index assignment requires array");
+      double d=num(idx);if(d<0||std::floor(d)!=d)throw Error("array index must be an integer");
+      size_t n=(size_t)d;if(n>=(*p)->size())throw Error("array index out of range");
+      (*p)->at(n)=applyAssign(op,(*p)->at(n),rhs);return;
+    }
+    throw Error("invalid assignment target");
+  }
+};
 struct FnDecl:Stmt{std::string n;std::vector<std::string>p;std::vector<std::unique_ptr<Stmt>>b;void exec(std::shared_ptr<Env>e)override{auto f=std::make_shared<Function>();f->params=p;f->body=std::move(b);f->closure=e;e->vars[n]=f;}};
 
 class Parser {
@@ -132,11 +172,12 @@ public:
   if(at("OOPSIE")){take();auto v=expr();if(at(";"))take();return std::make_unique<Throw>(Throw{std::move(v)});}
   if(at("NOPE")){take();if(at(";"))take();return std::make_unique<Break>();}
   if(at("ZOOM")){take();if(at(";"))take();return std::make_unique<Continue>();}
+  if(at("TRY")){take();auto b=block();if(!at("CATCH"))throw Error("TRY requires CATCH");take();auto n=take().text;auto h=block();return std::make_unique<TryCatch>(TryCatch{std::move(b),std::move(h),n});}
   if(at("GLOP"))throw Error("unreachable");
   if(at("WIZARD")){take();auto n=take().text;need("(");std::vector<std::string>p;if(!at(")")){do{p.push_back(take().text);}while(at(",")&&take().text==",");}need(")");auto b=block();return std::make_unique<FnDecl>(FnDecl{n,std::move(p),std::move(b->s)});}
   if(at("SUS")){take();auto t=expr();auto a=block();std::unique_ptr<Block>b;if(at("NAH")){take();b=block();}return std::make_unique<If>(If{std::move(t),std::move(a),std::move(b)});}
   if(at("SPIN")){take();auto t=expr();auto b=block();return std::make_unique<While>(While{std::move(t),std::move(b)});}
-  auto v=expr();if(cur().kind==Token::OP&&std::string("= += -= *= /=").find(cur().text)!=std::string::npos){auto op=take().text;auto x=expr();if(at(";"))take();if(auto n=dynamic_cast<Name*>(v.get()))return std::make_unique<Assign>(Assign{n->n,op,std::move(x)});throw Error("assignment target must be a variable");}if(at(";"))take();return std::make_unique<ExprStmt>(ExprStmt{std::move(v)});
+  auto v=expr();if(cur().kind==Token::OP&&std::string("= += -= *= /=").find(cur().text)!=std::string::npos){auto op=take().text;auto x=expr();if(at(";"))take();return std::make_unique<TargetAssign>(TargetAssign{std::move(v),op,std::move(x)});}if(at(";"))take();return std::make_unique<ExprStmt>(ExprStmt{std::move(v)});
  }
  std::unique_ptr<Expr> expr(){return binary(0);}
  std::unique_ptr<Expr> binary(int min){auto a=unary();static const std::unordered_map<std::string,int>p{{"||",1},{"&&",2},{"==",3},{"!=",3},{"<",4},{"<=",4},{">",4},{">=",4},{"+",5},{"-",5},{"*",6},{"/",6},{"%",6}};while(p.count(cur().text)&&p.at(cur().text)>=min){auto op=take().text;auto b=binary(p.at(op)+1);a=std::make_unique<Binary>(Binary{op,std::move(a),std::move(b)});}return a;}

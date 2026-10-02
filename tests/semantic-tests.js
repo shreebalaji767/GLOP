@@ -11,6 +11,8 @@ check("WIZARD outer(){ GLOP x=1 WIZARD inner(){ YEET x } YEET BONK inner() }");
 check("SPIN BASED { NOPE ZOOM }");
 check("TRY { OOPSIE «bad» } CATCH error { YAP error }");
 check("GLOP p={name:«RAVI»}\nYAP p.name");
+check("GLOP x=10\nGLOP y=x+5\nYAP y");
+check("GLOP x=«A»\nGLOP y=x+«B»\nYAP y");
 
 assert.throws(
   () => check("YAP missing"),

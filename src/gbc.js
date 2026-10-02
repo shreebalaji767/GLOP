@@ -33,6 +33,8 @@ const writeArg=(w,arg)=>{
 
 const writeChunk=(w,c)=>{
   w.u32(c.arity??0);w.string(c.name??"<main>");
+  w.u32((c.freeNames??[]).length);for(const n of (c.freeNames??[]))w.string(n);
+  const localNames=Object.entries(c.localNames??{});w.u32(localNames.length);for(const [name,index] of localNames){w.u32(Number(index));w.string(name);}
   w.u32(c.constants.length);for(const v of c.constants)writeValue(w,v);
   w.u32(c.functions.length);for(const fn of c.functions)writeChunk(w,fn);
   w.u32(c.code.length);
@@ -44,7 +46,7 @@ const writeChunk=(w,c)=>{
 };
 
 export const encodeGBC=bytecode=>{
-  const w=new Writer();w.parts.push(Buffer.from("GBC1"));w.u8(1);writeChunk(w,bytecode);return w.result();
+  const w=new Writer();w.parts.push(Buffer.from("GBC2"));w.u8(2);writeChunk(w,bytecode);return w.result();
 };
 
 export const writeGBC=(bytecode,file)=>fs.writeFileSync(file,encodeGBC(bytecode));

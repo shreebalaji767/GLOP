@@ -5,7 +5,7 @@ import { parse } from "./parser.js";
 import { analyze } from "./semantic.js";
 import { compile } from "./compiler.js";
 import { compileBytecode } from "./bytecode-compiler.js";
-import { writeGBC } from "./gbc.js";
+import { writeGBC, readGBC } from "./gbc.js";
 import { runBytecode } from "./vm.js";
 import { ModuleLoader } from "./module-loader.js";
 import { bundleModules } from "./module-bundler.js";
@@ -13,11 +13,16 @@ import { bundleModules } from "./module-bundler.js";
 const [, , cmd, file, ...rest] = process.argv;
 
 if (cmd === "repl") {\n  const { startRepl } = await import("./repl.js");\n  await startRepl();\n  process.exit(0);\n}\n\nif (!cmd || !file) {
-  console.log("GLOP 0.10.0\n\n glop run <file.glop>\n glop repl\n glop compile <file.glop> [-o out.mjs]\n glop check <file.glop>\n glop build <file.glop> [-o out.gbc]\n glop tokens <file.glop>");
+  console.log("GLOP 0.11.0\n\n glop run <file.glop|file.gbc>\n glop repl\n glop compile <file.glop> [-o out.mjs]\n glop check <file.glop>\n glop build <file.glop> [-o out.gbc]\n glop tokens <file.glop>");
   process.exit(cmd ? 1 : 0);
 }
 
 try {
+  if (cmd === "run" && file.toLowerCase().endsWith(".gbc")) {
+    runBytecode(readGBC(file), { output: console.log });
+    process.exit(0);
+  }
+
   const source = fs.readFileSync(file, "utf8");
   const tokens = lex(source);
   const ast = parse(tokens);

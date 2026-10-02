@@ -32,7 +32,8 @@ class Lexer {
   std::string s; size_t p=0; int line=1,col=1;
   std::unordered_map<std::string,bool> kw{{"GLOP",1},{"YAP",1},{"SUS",1},{"NAH",1},{"SPIN",1},{"WIZARD",1},{"YEET",1},{"BASED",1},{"CAP",1},{"VOID",1},{"OOPSIE",1},{"TRY",1},{"CATCH",1},{"NOPE",1},{"ZOOM",1},{"BONK",1}};
   char peek(size_t n=0) const { return p+n<s.size()?s[p+n]:'\0'; }
-  char take(){char c=peek();if(!c)return 0;p++;if(c=='\n'){line++;col=1;}else col++;return c;}
+  char take(){char c=peek();if(!c)return 0;p++;if(c=='
+'){line++;col=1;}else col++;return c;}
 public:
   explicit Lexer(std::string x):s(std::move(x)){}
   std::vector<Token> all(){
@@ -40,7 +41,9 @@ public:
     while(p<s.size()){
       char c=peek();
       if(std::isspace((unsigned char)c)){take();continue;}
-      if(c=='/'&&peek(1)=='/'){while(peek()&&peek()!='\n')take();continue;}\n      if(c=='/'&&peek(1)=='*'){take();take();while(peek()&&!(peek()=='*'&&peek(1)=='/'))take();if(!peek())throw Error("unterminated block comment");take();take();continue;}
+      if(c=='/'&&peek(1)=='/'){while(peek()&&peek()!='
+')take();continue;}
+      if(c=='/'&&peek(1)=='*'){take();take();while(peek()&&!(peek()=='*'&&peek(1)=='/'))take();if(!peek())throw Error("unterminated block comment");take();take();continue;}
       int l=line,cc=col;
       if(std::isalpha((unsigned char)c)||c=='_'){std::string x;while(std::isalnum((unsigned char)peek())||peek()=='_')x+=take();out.push_back({kw.count(x)?ID:ID,x,0,l,cc});continue;}
       if(std::isdigit((unsigned char)c)){std::string x;while(std::isdigit((unsigned char)peek()))x+=take();if(peek()=='.'){x+=take();while(std::isdigit((unsigned char)peek()))x+=take();}out.push_back({NUM,x,std::stod(x),l,cc});continue;}
@@ -117,7 +120,8 @@ struct Call:Expr{std::unique_ptr<Expr>f;std::vector<std::unique_ptr<Expr>>args;V
     throw Error("BONK target is not a function");}};
 
 struct Var:Stmt{std::string n;std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{e->vars[n]=v->eval(e);}};
-struct Print:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{std::cout<<show(v->eval(e))<<"\n";}};
+struct Print:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{std::cout<<show(v->eval(e))<<"
+";}};
 struct ExprStmt:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{v->eval(e);}};
 struct Return:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{throw ReturnSignal{v->eval(e)};}};
 struct Throw:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{throw Error(show(v->eval(e)));}};
@@ -361,6 +365,69 @@ static Value nativeRange(const std::vector<Value>& a){
   else {for(double x=start;x>end;x+=step)out->push_back(x);}
   return out;
 }
+static Value nativeMin(const std::vector<Value>& a){
+  if(a.empty()) throw Error("MIN expects at least 1 argument");
+  double r=num(a[0]); for(size_t i=1;i<a.size();++i) r=std::min(r,num(a[i])); return r;
+}
+static Value nativeMax(const std::vector<Value>& a){
+  if(a.empty()) throw Error("MAX expects at least 1 argument");
+  double r=num(a[0]); for(size_t i=1;i<a.size();++i) r=std::max(r,num(a[i])); return r;
+}
+static Value nativePow(const std::vector<Value>& a){
+  if(a.size()!=2) throw Error("POW expects 2 arguments");
+  return std::pow(num(a[0]),num(a[1]));
+}
+static Value nativeClamp(const std::vector<Value>& a){
+  if(a.size()!=3) throw Error("CLAMP expects 3 arguments");
+  double x=num(a[0]), lo=num(a[1]), hi=num(a[2]);
+  if(lo>hi) throw Error("CLAMP minimum cannot exceed maximum");
+  return std::max(lo,std::min(x,hi));
+}
+static Value nativeAssert(const std::vector<Value>& a){
+  if(a.empty()||a.size()>2) throw Error("ASSERT expects 1 or 2 arguments");
+  if(!truthy(a[0])) throw Error(a.size()==2 ? show(a[1]) : "ASSERT failed");
+  return true;
+}
+static Value nativeRepeat(const std::vector<Value>& a){
+  if(a.size()!=2) throw Error("REPEAT expects 2 arguments");
+  auto s=std::get_if<std::string>(&a[0].v); if(!s) throw Error("REPEAT expects a string");
+  double n=num(a[1]); if(n<0||std::floor(n)!=n) throw Error("REPEAT count must be a non-negative integer");
+  std::string out; out.reserve(s->size()*(size_t)n);
+  for(size_t i=0;i<(size_t)n;++i) out+=*s;
+  return out;
+}
+static Value nativeTrim(const std::vector<Value>& a){
+  if(a.size()!=1) throw Error("TRIM expects 1 argument");
+  auto s=std::get_if<std::string>(&a[0].v); if(!s) throw Error("TRIM expects a string");
+  size_t b=0,e=s->size();
+  while(b<e&&std::isspace((unsigned char)(*s)[b])) ++b;
+  while(e>b&&std::isspace((unsigned char)(*s)[e-1])) --e;
+  return s->substr(b,e-b);
+}
+static Value nativeReplace(const std::vector<Value>& a){
+  if(a.size()!=3) throw Error("REPLACE expects 3 arguments");
+  auto s=std::get_if<std::string>(&a[0].v); auto from=std::get_if<std::string>(&a[1].v); auto to=std::get_if<std::string>(&a[2].v);
+  if(!s||!from||!to) throw Error("REPLACE expects string arguments");
+  if(from->empty()) return *s;
+  std::string out=*s; size_t p=0;
+  while((p=out.find(*from,p))!=std::string::npos){out.replace(p,from->size(),*to);p+=to->size();}
+  return out;
+}
+static Value nativeSplit(const std::vector<Value>& a){
+  if(a.size()!=2) throw Error("SPLIT expects 2 arguments");
+  auto s=std::get_if<std::string>(&a[0].v); auto sep=std::get_if<std::string>(&a[1].v);
+  if(!s||!sep) throw Error("SPLIT expects string arguments");
+  auto out=std::make_shared<Value::Array>();
+  if(sep->empty()){for(unsigned char ch:*s) out->push_back(std::string(1,(char)ch)); return out;}
+  size_t p=0,q; while((q=s->find(*sep,p))!=std::string::npos){out->push_back(s->substr(p,q-p));p=q+sep->size();}
+  out->push_back(s->substr(p)); return out;
+}
+static Value nativeJoin(const std::vector<Value>& a){
+  if(a.size()!=2) throw Error("JOIN expects 2 arguments");
+  auto p=std::get_if<std::shared_ptr<Value::Array>>(&a[0].v); auto sep=std::get_if<std::string>(&a[1].v);
+  if(!p||!sep) throw Error("JOIN expects array and string");
+  std::string out; for(size_t i=0;i<(*p)->size();++i){if(i)out+=*sep;out+=show((*p)->at(i));} return out;
+}
 static Value nativeParseNumber(const std::vector<Value>& a){
   if(a.size()!=1) throw Error("NUMBER expects 1 argument");
   auto s=std::get_if<std::string>(&a[0].v); if(!s) throw Error("NUMBER expects a string");
@@ -375,12 +442,16 @@ static std::string readFile(const std::string&f){std::ifstream in(f);if(!in)thro
 int main(int argc,char**argv){
   try{
     if(argc<2){
-      std::cerr<<"GLOP 0.6.0 native runtime\n";
-      std::cerr<<"usage: glop <program.glop> [args...]\n";
-      std::cerr<<"built-ins: LEN PUSH POP TYPE ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS HAS KEYS RANGE NUMBER ARGS TIME_MS SLEEP_MS ENV CWD JOIN_PATH\n";
+      std::cerr<<"GLOP 0.6.0 native runtime
+";
+      std::cerr<<"usage: glop <program.glop> [args...]
+";
+      std::cerr<<"built-ins: LEN PUSH POP TYPE ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS HAS KEYS RANGE NUMBER ARGS TIME_MS SLEEP_MS ENV CWD JOIN_PATH MIN MAX POW CLAMP ASSERT REPEAT TRIM REPLACE SPLIT JOIN
+";
       return 2;
     }
-    glop::gArgs.assign(argv + 2, argv + argc);\n    auto ast=glop::Parser(glop::Lexer(glop::readFile(argv[1])).all()).program();
+    glop::gArgs.assign(argv + 2, argv + argc);
+    auto ast=glop::Parser(glop::Lexer(glop::readFile(argv[1])).all()).program();
     auto env=std::make_shared<glop::Env>();
     env->vars["LEN"]=glop::Value(glop::nativeLen);
     env->vars["PUSH"]=glop::Value(glop::nativePush);
@@ -400,10 +471,29 @@ int main(int argc,char**argv){
     env->vars["HAS"]=glop::Value(glop::nativeHas);
     env->vars["KEYS"]=glop::Value(glop::nativeKeys);
     env->vars["RANGE"]=glop::Value(glop::nativeRange);
-    env->vars["NUMBER"]=glop::Value(glop::nativeParseNumber);\n    env->vars["ARGS"]=glop::Value(glop::nativeArgs);\n    env->vars["TIME_MS"]=glop::Value(glop::nativeTimeMs);\n    env->vars["SLEEP_MS"]=glop::Value(glop::nativeSleepMs);\n    env->vars["ENV"]=glop::Value(glop::nativeGetEnv);\n    env->vars["CWD"]=glop::Value(glop::nativeCwd);\n    env->vars["JOIN_PATH"]=glop::Value(glop::nativeJoinPath);
+    env->vars["NUMBER"]=glop::Value(glop::nativeParseNumber);
+    env->vars["ARGS"]=glop::Value(glop::nativeArgs);
+    env->vars["TIME_MS"]=glop::Value(glop::nativeTimeMs);
+    env->vars["SLEEP_MS"]=glop::Value(glop::nativeSleepMs);
+    env->vars["ENV"]=glop::Value(glop::nativeGetEnv);
+    env->vars["CWD"]=glop::Value(glop::nativeCwd);
+    env->vars["JOIN_PATH"]=glop::Value(glop::nativeJoinPath);
+    env->vars["MIN"]=glop::Value(glop::nativeMin);
+    env->vars["MAX"]=glop::Value(glop::nativeMax);
+    env->vars["POW"]=glop::Value(glop::nativePow);
+    env->vars["CLAMP"]=glop::Value(glop::nativeClamp);
+    env->vars["ASSERT"]=glop::Value(glop::nativeAssert);
+    env->vars["REPEAT"]=glop::Value(glop::nativeRepeat);
+    env->vars["TRIM"]=glop::Value(glop::nativeTrim);
+    env->vars["REPLACE"]=glop::Value(glop::nativeReplace);
+    env->vars["SPLIT"]=glop::Value(glop::nativeSplit);
+    env->vars["JOIN"]=glop::Value(glop::nativeJoin);
     for(auto&s:ast)s->exec(env);
     return 0;
-  }catch(const glop::Error&e){std::cerr<<"GLOP OOPSIE: "<<e.what()<<"\n";return 1;}
-   catch(const glop::ReturnSignal&){std::cerr<<"GLOP OOPSIE: YEET outside WIZARD\n";return 1;}
-   catch(...){std::cerr<<"GLOP OOPSIE: unknown runtime failure\n";return 1;}
+  }catch(const glop::Error&e){std::cerr<<"GLOP OOPSIE: "<<e.what()<<"
+";return 1;}
+   catch(const glop::ReturnSignal&){std::cerr<<"GLOP OOPSIE: YEET outside WIZARD
+";return 1;}
+   catch(...){std::cerr<<"GLOP OOPSIE: unknown runtime failure
+";return 1;}
 }

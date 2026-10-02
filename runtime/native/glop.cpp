@@ -241,13 +241,53 @@ static Value nativeSqrt(const std::vector<Value>& a){ if(a.size()!=1) throw Erro
 static Value nativeFloor(const std::vector<Value>& a){ if(a.size()!=1) throw Error("FLOOR expects 1 argument"); return std::floor(num(a[0])); }
 static Value nativeCeil(const std::vector<Value>& a){ if(a.size()!=1) throw Error("CEIL expects 1 argument"); return std::ceil(num(a[0])); }
 static Value nativeToString(const std::vector<Value>& a){ if(a.size()!=1) throw Error("TO_STRING expects 1 argument"); return show(a[0]); }
+static Value nativeSubstr(const std::vector<Value>& a){
+  if(a.size()!=3) throw Error("SUBSTR expects 3 arguments");
+  auto s=std::get_if<std::string>(&a[0].v); if(!s) throw Error("SUBSTR expects a string");
+  double start=num(a[1]), len=num(a[2]);
+  if(start<0||len<0||std::floor(start)!=start||std::floor(len)!=len) throw Error("SUBSTR indexes must be non-negative integers");
+  size_t p=(size_t)start, n=(size_t)len;
+  if(p>s->size()) return std::string();
+  return s->substr(p,n);
+}
+static Value nativeUpper(const std::vector<Value>& a){
+  if(a.size()!=1) throw Error("UPPER expects 1 argument");
+  auto s=std::get_if<std::string>(&a[0].v); if(!s) throw Error("UPPER expects a string");
+  std::string r=*s; for(char& c:r)c=(char)std::toupper((unsigned char)c); return r;
+}
+static Value nativeLower(const std::vector<Value>& a){
+  if(a.size()!=1) throw Error("LOWER expects 1 argument");
+  auto s=std::get_if<std::string>(&a[0].v); if(!s) throw Error("LOWER expects a string");
+  std::string r=*s; for(char& c:r)c=(char)std::tolower((unsigned char)c); return r;
+}
+static Value nativeReadFile(const std::vector<Value>& a){
+  if(a.size()!=1) throw Error("READ_FILE expects 1 argument");
+  auto s=std::get_if<std::string>(&a[0].v); if(!s) throw Error("READ_FILE expects a path string");
+  return readFile(*s);
+}
+static Value nativeWriteFile(const std::vector<Value>& a){
+  if(a.size()!=2) throw Error("WRITE_FILE expects 2 arguments");
+  auto p=std::get_if<std::string>(&a[0].v); auto d=std::get_if<std::string>(&a[1].v);
+  if(!p||!d) throw Error("WRITE_FILE expects path and string data");
+  std::ofstream out(*p); if(!out) throw Error("cannot write "+*p); out<<*d; return true;
+}
+static Value nativeExists(const std::vector<Value>& a){
+  if(a.size()!=1) throw Error("EXISTS expects 1 argument");
+  auto p=std::get_if<std::string>(&a[0].v); if(!p) throw Error("EXISTS expects a path string");
+  std::ifstream in(*p); return (bool)in;
+}
 
 static std::string readFile(const std::string&f){std::ifstream in(f);if(!in)throw Error("cannot open "+f);return std::string((std::istreambuf_iterator<char>(in)),{});}
 }
 
 int main(int argc,char**argv){
   try{
-    if(argc!=2){std::cerr<<"GLOP 0.4.0 native runtime\nusage: glop <program.glop>\n";return 2;}
+    if(argc!=2){
+      std::cerr<<"GLOP 0.5.0 native runtime\n";
+      std::cerr<<"usage: glop <program.glop>\n";
+      std::cerr<<"built-ins: LEN PUSH POP TYPE ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS\n";
+      return 2;
+    }
     auto ast=glop::Parser(glop::Lexer(glop::readFile(argv[1])).all()).program();
     auto env=std::make_shared<glop::Env>();
     env->vars["LEN"]=glop::Value(glop::nativeLen);
@@ -259,6 +299,12 @@ int main(int argc,char**argv){
     env->vars["FLOOR"]=glop::Value(glop::nativeFloor);
     env->vars["CEIL"]=glop::Value(glop::nativeCeil);
     env->vars["TO_STRING"]=glop::Value(glop::nativeToString);
+    env->vars["SUBSTR"]=glop::Value(glop::nativeSubstr);
+    env->vars["UPPER"]=glop::Value(glop::nativeUpper);
+    env->vars["LOWER"]=glop::Value(glop::nativeLower);
+    env->vars["READ_FILE"]=glop::Value(glop::nativeReadFile);
+    env->vars["WRITE_FILE"]=glop::Value(glop::nativeWriteFile);
+    env->vars["EXISTS"]=glop::Value(glop::nativeExists);
     for(auto&s:ast)s->exec(env);
     return 0;
   }catch(const glop::Error&e){std::cerr<<"GLOP OOPSIE: "<<e.what()<<"\n";return 1;}

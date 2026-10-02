@@ -59,7 +59,7 @@ const bundledOutput=[];
 const bundled = bundleModules(path.join(dir,"build-main.glop"));
 runBytecode(compileBytecode(bundled.ast), { output:value=>bundledOutput.push(value) });
 assert.deepEqual(bundledOutput,[45]);
-assert.equal(bundled.modules.length,2);
+assert.equal(bundled.modules.length,3);
 assert.throws(()=>bundleModules(path.join(dir,"a.glop")),e=>e.code==="MODULE_CYCLE");
 
 console.log("GLOP MODULE TESTS PASSED.");

@@ -18,7 +18,27 @@
 
 namespace glop {
 
-struct SourcePos { int line=1,col=1; std::string describe() const { return std::to_string(line)+":"+std::to_string(col); } };
+struct SourcePos {
+  int line=1,col=1;
+  std::string describe() const { return std::to_string(line)+":"+std::to_string(col); }
+};
+struct Diagnostic {
+  std::string code="GLOP-E9999", category="[CHAOS ENGINE]", what, why, fix, technical;
+  SourcePos pos; bool hasPos=false;
+  std::string format(bool plain,const std::string&file,const std::string&source) const {
+    if(plain) return std::string("GLOP ERROR")+(hasPos?(" at "+pos.describe()):"")+": "+technical;
+    std::string s=code+" "+category+"\n\n  WHAT HAPPENED\n  "+what+"\n\n  WHY THIS MAY HAVE HAPPENED\n  "+why+"\n\n  WHAT CAN BE DONE\n  "+fix+"\n\n  TECHNICAL DETAIL\n  "+technical;
+    if(hasPos && !source.empty()){
+      std::string line; int n=1; size_t start=0;
+      while(start<source.size() && n<pos.line){size_t e=source.find('\\n',start);if(e==std::string::npos){start=source.size();break;}start=e+1;++n;}
+      if(start<source.size()){size_t e=source.find('\\n',start);line=source.substr(start,e==std::string::npos?std::string::npos:e-start);
+        s+="\\n\\n  SOURCE\\n  "+file+":"+pos.describe()+"\\n  "+line+"\\n  "+std::string(std::max(0,pos.col-1),' ')+"^";
+      }
+    }
+    s+="\\n\\n  CHAOS REPORT\\n  GLOP → PANIC → DIAGNOSE → FIX → BONK AGAIN";
+    return s;
+  }
+};
 struct Error : std::runtime_error {
   using std::runtime_error::runtime_error;
   SourcePos pos; bool hasPos=false;
@@ -592,6 +612,19 @@ static std::string chaosDiagnostic(const std::string& message, bool plain=false,
   }
   return s;
 }
+static Diagnostic makeDiagnostic(const std::string&message,const SourcePos*pos=nullptr){
+  Diagnostic d; d.technical=message; if(pos){d.pos=*pos;d.hasPos=true;}
+  if(message.find("unterminated string")!=std::string::npos){d.code="GLOP-E1001";d.category="[SYNTAX GOBLIN]";d.what="THE QUOTE ESCAPED. THE STRING DID NOT.";d.why="A string started but no matching closing delimiter was found.";d.fix="Close the string with the matching quote.";}
+  else if(message.find("unexpected character")!=std::string::npos){d.code="GLOP-E1002";d.category="[CHARACTER MUTINY]";d.what="A CHARACTER JUST WALKED INTO THE COMPILER UNINVITED.";d.why="The lexer found a character that is not valid GLOP syntax.";d.fix="Remove it or replace it with valid GLOP syntax.";}
+  else if(message.find("expected ")==0){d.code="GLOP-E1003";d.category="[PARSER PANIC]";d.what="THE PARSER WANTED ONE THING AND GOT ABSOLUTELY ANOTHER.";d.why="The source does not match the grammar at this location.";d.fix="Inspect the caret and check nearby braces, parentheses, commas, and keywords.";}
+  else if(message.find("undefined variable")!=std::string::npos){d.code="GLOP-E2001";d.category="[NAME GOBLIN]";d.what="THAT NAME DOES NOT EXIST IN THIS UNIVERSE.";d.why="No binding exists in the current scope.";d.fix="Declare it, check spelling, or check scope.";}
+  else if(message.find("maximum call depth")!=std::string::npos){d.code="GLOP-E6002";d.category="[RECURSION HYDRA]";d.what="THE WIZARD KEPT CALLING ITSELF UNTIL THE STACK SAID ENOUGH.";d.why="Active WIZARD calls exceeded the safety limit.";d.fix="Check recursive base cases or rewrite iteratively.";}
+  else if(message.find("division by zero")!=std::string::npos){d.code="GLOP-E3001";d.category="[MATH GREMLIN]";d.what="ZERO HAS ENTERED THE DENOMINATOR.";d.why="The divisor evaluated to zero.";d.fix="Guard the divisor before dividing.";}
+  else if(message.find("array index out of range")!=std::string::npos){d.code="GLOP-E3002";d.category="[INDEX CANNON]";d.what="YOU FIRED AN INDEX INTO EMPTY SPACE.";d.why="The requested array position is outside the valid range.";d.fix="Check LEN(array) and use a valid index.";}
+  else {d.what="THE RUNTIME HAS ENCOUNTERED PREMIUM NONSENSE.";d.why="An operation could not complete normally.";d.fix="Read the technical detail and inspect the source around the caret.";}
+  return d;
+}
+
 static void printChaosSuccess(const std::string&what, bool plain=false){
   if(plain) std::cout<<"GLOP OK: "<<what<<"\n";
   else std::cout<<"[SUCCESS: SOMEHOW]\n  "<<what<<"\n  CHAOS ENGINE: SURVIVED\n";
@@ -670,7 +703,7 @@ int main(int argc,char**argv){
     env->vars["JOIN"]=glop::Value(glop::nativeJoin);
     for(auto&s:ast)s->exec(env);
     return 0;
-  }catch(const glop::Error&e){std::cerr<<chaosDiagnostic(e.what(), gPlainDiagnostics, e.hasPos?&e.pos:nullptr)<<"\n";return 1;}
+  }catch(const glop::Error&e){auto d=makeDiagnostic(e.what(),e.hasPos?&e.pos:nullptr);std::cerr<<d.format(gPlainDiagnostics,gSourcePath,gSourceText)<<"\n";return 1;}
   catch(const glop::ReturnSignal&){std::cerr<<"GLOP-E2003 [YEET CRIME]\\n  YEET ESCAPED A WIZARD. THIS IS NOT A NORMAL EXIT.\\n  Technical: YEET outside WIZARD\\n";return 1;}
   catch(...){std::cerr<<chaosDiagnostic("unknown runtime failure", gPlainDiagnostics)<<"\n";return 1;}
 }

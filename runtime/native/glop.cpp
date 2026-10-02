@@ -17,7 +17,7 @@ namespace glop {
 
 struct Error : std::runtime_error { using std::runtime_error::runtime_error; };
 struct Value;
-struct ReturnSignal { Value value; };
+struct ReturnSignal;
 struct BreakSignal {};
 struct CatchSignal { std::string message; };
 struct ContinueSignal {};
@@ -62,6 +62,7 @@ struct Value {
   Value():v(std::monostate{}){} Value(bool x):v(x){} Value(double x):v(x){} Value(std::string x):v(std::move(x)){}
   Value(const char*x):v(std::string(x)){} Value(std::shared_ptr<Array>x):v(std::move(x)){} Value(std::shared_ptr<Object>x):v(std::move(x)){} Value(std::shared_ptr<Function>x):v(std::move(x)){}
 };
+struct ReturnSignal { Value value; };
 struct Expr { virtual ~Expr()=default; virtual Value eval(std::shared_ptr<Env>)=0; };
 struct Stmt { virtual ~Stmt()=default; virtual void exec(std::shared_ptr<Env>)=0; };
 
@@ -111,16 +112,7 @@ struct Print:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)overrid
 struct ExprStmt:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{v->eval(e);}};
 struct Return:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{throw ReturnSignal{v->eval(e)};}};
 struct Throw:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{throw Error(show(v->eval(e)));}};
-struct TryCatch:Stmt{
-  std::unique_ptr<Block>body,handler; std::string name;
-  void exec(std::shared_ptr<Env>e)override{
-    try{body->exec(e);}
-    catch(const ReturnSignal&){throw;}
-    catch(const BreakSignal&){throw;}
-    catch(const ContinueSignal&){throw;}
-    catch(const Error&x){auto h=std::make_shared<Env>(e);h->vars[name]=Value(std::string(x.what()));handler->exec(h);}
-  }
-};
+
 static Value applyAssign(const std::string&op,const Value&old,const Value&rhs){
   if(op=="=")return rhs;
   if(op=="+="){if(std::holds_alternative<std::string>(old.v)||std::holds_alternative<std::string>(rhs.v))return show(old)+show(rhs);return num(old)+num(rhs);}
@@ -131,7 +123,16 @@ static Value applyAssign(const std::string&op,const Value&old,const Value&rhs){
 }
 struct Assign:Stmt{std::string n,op;std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{e->set(n,applyAssign(op,e->get(n),v->eval(e)));}};
 struct Block:Stmt{std::vector<std::unique_ptr<Stmt>>s;void exec(std::shared_ptr<Env>e)override{auto x=std::make_shared<Env>(e);for(auto&z:s)z->exec(x);}};
-struct If:Stmt{std::unique_ptr<Expr>t;std::unique_ptr<Block>a,b;void exec(std::shared_ptr<Env>e)override{if(truth(t->eval(e)))a->exec(e);else if(b)b->exec(e);}};
+struct TryCatch:Stmt{
+  std::unique_ptr<Block>body,handler; std::string name;
+  void exec(std::shared_ptr<Env>e)override{
+    try{body->exec(e);}
+    catch(const ReturnSignal&){throw;}
+    catch(const BreakSignal&){throw;}
+    catch(const ContinueSignal&){throw;}
+    catch(const Error&x){auto h=std::make_shared<Env>(e);h->vars[name]=Value(std::string(x.what()));handler->exec(h);}
+  }
+};\nstruct If:Stmt{std::unique_ptr<Expr>t;std::unique_ptr<Block>a,b;void exec(std::shared_ptr<Env>e)override{if(truth(t->eval(e)))a->exec(e);else if(b)b->exec(e);}};
 struct While:Stmt{std::unique_ptr<Expr>t;std::unique_ptr<Block>b;void exec(std::shared_ptr<Env>e)override{while(truth(t->eval(e))){try{b->exec(e);}catch(BreakSignal&){break;}catch(ContinueSignal&){}}}};
 struct Break:Stmt{void exec(std::shared_ptr<Env>)override{throw BreakSignal{};}};
 struct Continue:Stmt{void exec(std::shared_ptr<Env>)override{throw ContinueSignal{};}};

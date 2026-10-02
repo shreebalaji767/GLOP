@@ -1,0 +1,1 @@
+export const node=(type,props={})=>({type,...props});

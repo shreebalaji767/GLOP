@@ -3,7 +3,7 @@ import { lex } from "../src/lexer.js";
 import { parse } from "../src/parser.js";
 import { compileBytecode } from "../src/bytecode-compiler.js";
 import { runBytecode } from "../src/vm.js";
-import { encodeGBC } from "../src/gbc.js";
+import { encodeGBC, decodeGBC } from "../src/gbc.js";
 
 const execute=source=>{const output=[];const result=runBytecode(compileBytecode(parse(lex(source))),{output:value=>output.push(value)});return{output,result}};
 
@@ -32,6 +32,15 @@ const closureBC=compileBytecode(closureAst);
 assert.equal(encodeGBC(closureBC).subarray(0,4).toString("ascii"),"GBC2");
 assert.equal(closureBC.functions[0].freeNames?.length??0,0);
 assert.equal(closureBC.functions[0].functions[0].freeNames[0],"a");
+const roundTrip = decodeGBC(encodeGBC(closureBC));
+const roundTripOutput=[];
+assert.equal(runBytecode(roundTrip,{output:value=>roundTripOutput.push(value)}),null);
+assert.deepEqual(roundTripOutput,[]);
+const simple = compileBytecode(parse(lex("GLOP x=21 YAP x*2")));
+const simpleRoundTripOutput=[];
+assert.equal(runBytecode(decodeGBC(encodeGBC(simple)),{output:value=>simpleRoundTripOutput.push(value)}),null);
+assert.deepEqual(simpleRoundTripOutput,[42]);
+assert.throws(()=>decodeGBC(Buffer.from("NOPE")),/unsupported or corrupt magic/);
 
 assert.throws(()=>execute("WIZARD add(a,b){ YEET a+b } YAP BONK add(1)").output,/expected 2 argument/);
 assert.throws(()=>execute("OOPSIE «UNHANDLED»"),/UNHANDLED/);

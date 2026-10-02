@@ -151,7 +151,9 @@ struct Function {
   std::string name="<anonymous>";
   std::vector<std::string>params;std::vector<std::unique_ptr<Stmt>> body;std::shared_ptr<Env>closure;Value call(const std::vector<Value>&args, Value thisValue=Value()){
   if(args.size()!=params.size())throw Error("wrong argument count");auto e=std::make_shared<Env>(closure);if(!std::holds_alternative<std::monostate>(thisValue.v)){e->vars["THIS"]=thisValue; if(auto owner=ownerClass.lock()) e->vars["__SUPER_OWNER"]=Value(owner);}for(size_t i=0;i<args.size();i++)e->vars[params[i]]=args[i];
+  static constexpr size_t MAX_CALL_DEPTH=1024;
   static thread_local std::vector<std::string> callStack;
+  if(callStack.size()>=MAX_CALL_DEPTH) throw Error("maximum call depth exceeded (1024)");
   struct StackGuard { std::vector<std::string>& stack; explicit StackGuard(std::vector<std::string>&s,const std::string&n):stack(s){stack.push_back(n);} ~StackGuard(){stack.pop_back();} };
   StackGuard guard(callStack,name);
   try{for(auto&s:body)s->exec(e);}catch(ReturnSignal&r){return r.value;}catch(const Error&x){
@@ -523,6 +525,7 @@ static std::string chaosDiagnostic(const std::string& message, bool plain=false)
   else if(message.find("unexpected character")!=std::string::npos){code="GLOP-E1002";cat="[CHARACTER MUTINY]";what="A CHARACTER JUST WALKED INTO THE COMPILER UNINVITED.";why="The lexer found a character that is not valid GLOP syntax.";fix="Remove it or replace it with valid GLOP punctuation, an operator, a keyword, or a string.";}
   else if(message.find("expected ")==0){code="GLOP-E1003";cat="[PARSER PANIC]";what="THE PARSER WANTED ONE THING AND GOT ABSOLUTELY ANOTHER.";why="The source structure does not match the grammar GLOP expected at that point.";fix="Inspect the reported location. Check missing braces, parentheses, commas, operators, or keywords.";}
   else if(message.find("undefined variable")!=std::string::npos){code="GLOP-E2001";cat="[NAME GOBLIN]";what="THAT NAME DOES NOT EXIST IN THIS UNIVERSE.";why="The program tried to read a variable that is not defined in the current scope or its parents.";fix="Declare it with GLOP, check spelling, or verify that you are using the variable inside the correct scope.";}
+  else if(message.find("maximum call depth exceeded")!=std::string::npos){code="GLOP-E6002";cat="[RECURSION HYDRA]";what="THE WIZARD KEPT CALLING ITSELF UNTIL THE STACK SAID ENOUGH.";why="Nested WIZARD calls exceeded GLOP's safety limit of 1024 active calls.";fix="Check recursive base cases, accidental self-calls, and mutually recursive functions. Reduce recursion depth or redesign the algorithm.";}
   else if(message.find("wrong argument count")!=std::string::npos){code="GLOP-E2002";cat="[BONK MISFIRE]";what="THE FUNCTION WAS BONKED WITH THE WRONG NUMBER OF ARGUMENTS.";why="The number of supplied arguments does not match the WIZARD's parameters.";fix="Count the parameters and arguments. Pass exactly the number the function declares.";}
   else if(message.find("division by zero")!=std::string::npos){code="GLOP-E3001";cat="[MATH GREMLIN]";what="ZERO HAS ENTERED THE DENOMINATOR. MATHEMATICS HAS FILED A COMPLAINT.";why="The right-hand side of division evaluated to zero.";fix="Check the divisor before dividing. Use SUS to handle the zero case.";}
   else if(message.find("array index out of range")!=std::string::npos){code="GLOP-E3002";cat="[INDEX CANNON]";what="YOU FIRED AN INDEX INTO EMPTY SPACE.";why="The requested array position is outside the valid range.";fix="Check LEN(array), and remember that array indexes start at 0.";}

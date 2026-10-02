@@ -20,7 +20,7 @@ Output: \`30\`
 
 GLOP=variable, YAP=print, SUS=if, NAH=else, SPIN=while, WIZARD=function,
 BONK=call, YEET=return, BASED=true, CAP=false, VOID=null, OOPSIE=throw,
-TRY/CATCH=errors, NOPE=break, ZOOM=continue.
+TRY/CATCH=errors, NOPE=break, ZOOM=continue, STEAL=import, FLEX=export.
 
 ## Run
 
@@ -102,3 +102,40 @@ The JavaScript front-end now performs stronger compile-time checks before byteco
 - rejection of BONK on known non-function values
 
 The analyzer intentionally keeps unknown for values whose type cannot yet be proven statically. This is a gradual foundation rather than pretending GLOP has a complete static type system already.
+
+
+## Modules
+
+GLOP 0.9 adds real source-module loading to the bytecode VM.
+
+Import a module with an explicit alias:
+
+```glop
+STEAL "./math.glop" AS math
+YAP BONK math.add(10)
+```
+
+Export selected module-level names:
+
+```glop
+GLOP base = 10
+
+WIZARD add(x) {
+    YEET x + base
+}
+
+FLEX add, base
+```
+
+Module behavior:
+- imports resolve relative to the importing `.glop` file
+- `.glop` is added automatically when omitted
+- modules are canonicalized and cached, so a module executes once per loader
+- circular imports are detected with a module-chain diagnostic
+- `FLEX` validates exported names before execution
+- module scope is isolated; exported GLOP functions retain the globals of their defining module
+- `glop run` uses the module loader
+- the bootstrap JavaScript compiler intentionally rejects `STEAL/FLEX`
+- native `.gbc` bundling of multi-file modules is not enabled yet; `glop build` rejects module programs instead of producing a misleading artifact
+
+The module system is deliberately path-based now; a package registry and dependency manager can build on this resolver later.

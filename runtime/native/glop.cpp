@@ -96,6 +96,9 @@ struct Env : std::enable_shared_from_this<Env>{
   void set(const std::string&n,Value v){if(vars.count(n)){vars[n]=std::move(v);return;}if(parent&&parent->has(n)){parent->set(n,std::move(v));return;}throw Error("undefined variable: "+n);}
 };
 
+struct Class { std::string name; std::unordered_map<std::string,std::shared_ptr<Function>> methods; std::shared_ptr<Env> closure; };
+struct Instance { std::shared_ptr<Class> klass; std::unordered_map<std::string,Value> fields; };
+
 struct Literal:Expr{Value v;explicit Literal(Value x):v(std::move(x)){}Value eval(std::shared_ptr<Env>)override{return v;}};
 struct Name:Expr{std::string n;explicit Name(std::string x):n(std::move(x)){}Value eval(std::shared_ptr<Env>e)override{return e->get(n);}};
 struct ArrayExpr:Expr{std::vector<std::unique_ptr<Expr>> a;Value eval(std::shared_ptr<Env>e)override{auto x=std::make_shared<Value::Array>();for(auto&z:a)x->push_back(z->eval(e));return x;}};
@@ -109,9 +112,6 @@ struct Binary:Expr{std::string op;std::unique_ptr<Expr>a,b;Value eval(std::share
 }};
 struct Member:Expr{std::unique_ptr<Expr>o;std::string k;Value eval(std::shared_ptr<Env>e)override{auto x=o->eval(e);if(auto ip=std::get_if<std::shared_ptr<Instance>>(&x.v)){auto inst=*ip;if(inst->fields.count(k))return inst->fields.at(k);auto it=inst->klass->methods.find(k);if(it!=inst->klass->methods.end()){auto method=it->second;return std::function<Value(const std::vector<Value>&)>([method,inst](const std::vector<Value>&args){return method->call(args,Value(inst));});}throw Error("unknown instance member: "+k);}auto p=std::get_if<std::shared_ptr<Value::Object>>(&x.v);if(!p)throw Error("member access requires object or instance");return (*p)->count(k)?(*p)->at(k):Value();}};
 struct Index:Expr{std::unique_ptr<Expr>o,i;Value eval(std::shared_ptr<Env>e)override{auto x=o->eval(e),q=i->eval(e);size_t n=(size_t)num(q);if(auto p=std::get_if<std::shared_ptr<Value::Array>>(&x.v)){double d=num(q);if(d<0||std::floor(d)!=d)throw Error("array index must be an integer");if(n>=(*p)->size())throw Error("array index out of range");return (*p)->at(n);}throw Error("index requires array");}};
-
-struct Class { std::string name; std::unordered_map<std::string,std::shared_ptr<Function>> methods; std::shared_ptr<Env> closure; };
-struct Instance { std::shared_ptr<Class> klass; std::unordered_map<std::string,Value> fields; };
 
 struct Function {std::vector<std::string>params;std::vector<std::unique_ptr<Stmt>> body;std::shared_ptr<Env>closure;Value call(const std::vector<Value>&args, Value thisValue=Value()){
   if(args.size()!=params.size())throw Error("wrong argument count");auto e=std::make_shared<Env>(closure);if(!std::holds_alternative<std::monostate>(thisValue.v))e->vars["THIS"]=thisValue;for(size_t i=0;i<args.size();i++)e->vars[params[i]]=args[i];

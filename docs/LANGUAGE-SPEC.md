@@ -80,3 +80,36 @@ YAP worker.greet()
 YAP INSTANCEOF(worker, Employee)
 YAP INSTANCEOF(worker, Person)
 ```
+
+
+## Modules
+
+Module declarations are currently file-scoped and path-based.
+
+Import:
+```glop
+STEAL "./math.glop" AS math
+YAP BONK math.add(2)
+```
+
+Export:
+```glop
+GLOP base = 40
+WIZARD add(x) {
+    YEET x + base
+}
+FLEX add, base
+```
+
+Rules:
+- `STEAL "path" AS alias` is allowed only at module scope.
+- Relative `./` and `../` paths are resolved from the importing file.
+- Missing `.glop` extensions are added automatically.
+- Bare package names are reserved for a future package manager.
+- `FLEX name, ...` exports existing module-level declarations.
+- Module loading is cached by canonical path.
+- Circular dependency chains are rejected.
+- Each module has its own global environment.
+- Functions exported from a module retain that module's global environment, so module-private state remains attached to the defining module.
+- The current export object is a snapshot of exported bindings at module completion; live ES-module-style bindings are a future semantic upgrade.
+- The native single-file `.gbc` path currently rejects multi-file `STEAL/FLEX` programs rather than silently dropping dependencies.

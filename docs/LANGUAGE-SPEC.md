@@ -113,3 +113,8 @@ Rules:
 - Functions exported from a module retain that module's global environment, so module-private state remains attached to the defining module.
 - The current export object is a snapshot of exported bindings at module completion; live ES-module-style bindings are a future semantic upgrade.
 - The native single-file `.gbc` path currently rejects multi-file `STEAL/FLEX` programs rather than silently dropping dependencies.
+
+
+## Interactive execution
+
+The reference CLI provides a persistent REPL. Each submission is lexed, parsed, semantically analyzed, compiled to bytecode, and executed. Global bindings remain available to later submissions.

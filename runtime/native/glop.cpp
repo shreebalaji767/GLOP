@@ -278,6 +278,48 @@ static Value nativeExists(const std::vector<Value>& a){
   auto p=std::get_if<std::string>(&a[0].v); if(!p) throw Error("EXISTS expects a path string");
   std::ifstream in(*p); return (bool)in;
 }
+static Value nativeHas(const std::vector<Value>& a){
+  if(a.size()!=2) throw Error("HAS expects 2 arguments");
+  if(auto p=std::get_if<std::shared_ptr<Value::Array>>(&a[0].v)){
+    double d=num(a[1]); if(d<0||std::floor(d)!=d) return false;
+    size_t n=(size_t)d; return n<(*p)->size();
+  }
+  if(auto p=std::get_if<std::shared_ptr<Value::Object>>(&a[0].v)){
+    auto k=std::get_if<std::string>(&a[1].v); if(!k) throw Error("HAS object key must be a string");
+    return (*p)->count(*k)>0;
+  }
+  if(auto p=std::get_if<std::string>(&a[0].v)){
+    auto k=std::get_if<std::string>(&a[1].v); if(!k) throw Error("HAS string needle must be a string");
+    return p->find(*k)!=std::string::npos;
+  }
+  throw Error("HAS expects array, object, or string");
+}
+static Value nativeKeys(const std::vector<Value>& a){
+  if(a.size()!=1) throw Error("KEYS expects 1 argument");
+  auto p=std::get_if<std::shared_ptr<Value::Object>>(&a[0].v);
+  if(!p) throw Error("KEYS expects an object");
+  auto out=std::make_shared<Value::Array>();
+  for(const auto& kv:*p) out->push_back(kv.first);
+  return out;
+}
+static Value nativeRange(const std::vector<Value>& a){
+  if(a.size()<1||a.size()>3) throw Error("RANGE expects 1 to 3 arguments");
+  double start=0,end=0,step=1;
+  if(a.size()==1){end=num(a[0]);}
+  else {start=num(a[0]); end=num(a[1]); if(a.size()==3) step=num(a[2]);}
+  if(step==0) throw Error("RANGE step cannot be zero");
+  auto out=std::make_shared<Value::Array>();
+  if(step>0){for(double x=start;x<end;x+=step)out->push_back(x);}
+  else {for(double x=start;x>end;x+=step)out->push_back(x);}
+  return out;
+}
+static Value nativeParseNumber(const std::vector<Value>& a){
+  if(a.size()!=1) throw Error("NUMBER expects 1 argument");
+  auto s=std::get_if<std::string>(&a[0].v); if(!s) throw Error("NUMBER expects a string");
+  try{size_t n=0; double x=std::stod(*s,&n); if(n!=s->size()) throw Error("NUMBER could not parse value"); return x;}
+  catch(const std::invalid_argument&){throw Error("NUMBER could not parse value");}
+  catch(const std::out_of_range&){throw Error("NUMBER is out of range");}
+}
 
 static std::string readFile(const std::string&f){std::ifstream in(f);if(!in)throw Error("cannot open "+f);return std::string((std::istreambuf_iterator<char>(in)),{});}
 }
@@ -287,7 +329,7 @@ int main(int argc,char**argv){
     if(argc!=2){
       std::cerr<<"GLOP 0.5.0 native runtime\n";
       std::cerr<<"usage: glop <program.glop>\n";
-      std::cerr<<"built-ins: LEN PUSH POP TYPE ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS\n";
+      std::cerr<<"built-ins: LEN PUSH POP TYPE ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS HAS KEYS RANGE NUMBER\n";
       return 2;
     }
     auto ast=glop::Parser(glop::Lexer(glop::readFile(argv[1])).all()).program();
@@ -307,6 +349,10 @@ int main(int argc,char**argv){
     env->vars["READ_FILE"]=glop::Value(glop::nativeReadFile);
     env->vars["WRITE_FILE"]=glop::Value(glop::nativeWriteFile);
     env->vars["EXISTS"]=glop::Value(glop::nativeExists);
+    env->vars["HAS"]=glop::Value(glop::nativeHas);
+    env->vars["KEYS"]=glop::Value(glop::nativeKeys);
+    env->vars["RANGE"]=glop::Value(glop::nativeRange);
+    env->vars["NUMBER"]=glop::Value(glop::nativeParseNumber);
     for(auto&s:ast)s->exec(env);
     return 0;
   }catch(const glop::Error&e){std::cerr<<"GLOP OOPSIE: "<<e.what()<<"\n";return 1;}

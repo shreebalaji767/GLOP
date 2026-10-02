@@ -11,8 +11,8 @@ import { ModuleLoader } from "./module-loader.js";
 
 const [, , cmd, file, ...rest] = process.argv;
 
-if (!cmd || !file) {
-  console.log("GLOP 0.9.0\n\n glop run <file.glop>\n glop compile <file.glop> [-o out.mjs]\n glop check <file.glop>\n glop build <file.glop> [-o out.gbc]\n glop tokens <file.glop>");
+if (cmd === "repl") {\n  const { startRepl } = await import("./repl.js");\n  await startRepl();\n  process.exit(0);\n}\n\nif (!cmd || !file) {
+  console.log("GLOP 0.9.0\n\n glop run <file.glop>\n glop repl\n glop compile <file.glop> [-o out.mjs]\n glop check <file.glop>\n glop build <file.glop> [-o out.gbc]\n glop tokens <file.glop>");
   process.exit(cmd ? 1 : 0);
 }
 

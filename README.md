@@ -1,4 +1,4 @@
-# GLOP
+# GLOP 0.12
 
 GLOP is a real programming language with ridiculous keywords and a serious compiler.
 
@@ -30,8 +30,7 @@ node src/cli.js run examples/hello.glop
 node src/cli.js compile examples/hello.glop\nnode src/cli.js build examples/hello.glop\n\n# Native runtime (after building runtime/native)\n./glop-runtime examples/hello.gbc
 \`\`\`
 
-GLOP 0.10 is the module-bundling, native-runtime and closure foundation for a future VM, modules, classes, package manager,
-formatter, debugger, REPL and browser playground.
+GLOP 0.12 adds portable bytecode inspection and a JavaScript-side standard library aligned with the native runtime. The project now includes modules, closures, classes, exceptions, a persistent REPL, GBC2 bytecode, a disassembler, and native runtime tooling.
 
 
 ## Dependency-free native GLOP
@@ -86,6 +85,33 @@ The standalone executable supports:
 - `glop --help` — show usage and built-ins.
 
 This keeps the development toolchain language-owned: a user running the native executable does not need Node.js, Python, Java, or another language runtime.
+
+
+## Portable JavaScript standard library
+
+The bytecode VM exposes the same core library surface used by native GLOP programs, including collections, math, strings, conversion, filesystem, environment, process arguments, timing, and assertions:
+
+```glop
+GLOP values = RANGE(1, 6)
+YAP LEN(values)
+YAP JOIN(SPLIT(«GLOP IS CHAOS», « »), «-»)
+YAP SQRT(144)
+```
+
+The standard-library implementation lives in `src/stdlib.js`, keeping the bootstrap VM independent from the native C++ implementation while preserving the same language-level names.
+
+## Bytecode inspection
+
+Inspect compiled bytecode directly:
+
+```text
+glop dump program.glop
+glop dump program.gbc
+glop build program.glop -o program.gbc
+glop run program.gbc
+```
+
+The disassembler shows function metadata, closure/free-variable metadata, locals, constants, instruction offsets, opcodes, and operands.
 
 
 ## Static semantic safety

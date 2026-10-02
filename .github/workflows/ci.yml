@@ -22,5 +22,6 @@ jobs:
       - run: cmake -S runtime/native -B build/native
       - run: cmake --build build/native --config Release
       - run: ./build/native/glop examples/hello.glop
+      - run: ./build/native/glop examples/native.glop
       - run: node src/cli.js build examples/hello.glop -o build/hello.gbc
       - run: ./build/native/glop-runtime build/hello.gbc

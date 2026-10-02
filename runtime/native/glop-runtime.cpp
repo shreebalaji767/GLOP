@@ -23,8 +23,9 @@ using Value = std::variant<std::monostate, bool, double, std::string,
                            std::shared_ptr<Object>>;
 
 struct Instruction { uint8_t op; int32_t arg; uint8_t argType; std::string text; };
-struct Chunk { uint32_t arity{}; std::string name; std::vector<Value> constants; std::vector<std::shared_ptr<Chunk>> functions; std::vector<Instruction> code; };
-struct Function { std::shared_ptr<Chunk> chunk; };
+struct Chunk { uint32_t arity{}; std::string name; std::vector<std::string> freeNames; std::unordered_map<std::string,uint32_t> localNames; std::vector<Value> constants; std::vector<std::shared_ptr<Chunk>> functions; std::vector<Instruction> code; };
+struct Cell { Value value; };
+struct Function { std::shared_ptr<Chunk> chunk; std::vector<std::shared_ptr<Cell>> freeCells; };
 struct Array { std::vector<Value> values; };
 struct Object { std::unordered_map<std::string, Value> values; };
 
@@ -55,7 +56,7 @@ static Instruction readInstruction(std::istream& in){
 }
 
 static std::shared_ptr<Chunk> readChunk(std::istream& in){
-  auto c=std::make_shared<Chunk>(); c->arity=readU32(in); c->name=readString(in);
+  auto c=std::make_shared<Chunk>(); c->arity=readU32(in); c->name=readString(in); auto nfrees=readU32(in); for(uint32_t i=0;i<nfrees;i++)c->freeNames.push_back(readString(in)); auto nlocals=readU32(in); for(uint32_t i=0;i<nlocals;i++){auto idx=readU32(in);c->localNames[readString(in)]=idx;}
   auto nc=readU32(in); for(uint32_t i=0;i<nc;i++)c->constants.push_back(readValue(in));
   auto nf=readU32(in); for(uint32_t i=0;i<nf;i++)c->functions.push_back(readChunk(in));
   auto ni=readU32(in); for(uint32_t i=0;i<ni;i++)c->code.push_back(readInstruction(in));
@@ -64,8 +65,8 @@ static std::shared_ptr<Chunk> readChunk(std::istream& in){
 
 static std::shared_ptr<Chunk> load(const std::string& file){
   std::ifstream in(file,std::ios::binary); if(!in)throw std::runtime_error("cannot open "+file);
-  char magic[4];in.read(magic,4);if(std::memcmp(magic,"GBC1",4)!=0)throw std::runtime_error("not a GLOP bytecode file");
-  if(readU8(in)!=1)throw std::runtime_error("unsupported GBC version");
+  char magic[4];in.read(magic,4);if(std::memcmp(magic,"GBC2",4)!=0)throw std::runtime_error("not a GLOP bytecode file");
+  if(readU8(in)!=2)throw std::runtime_error("unsupported GBC version");
   return readChunk(in);
 }
 
@@ -94,7 +95,7 @@ enum : uint8_t {
  NOT,NEG,JUMP,JUMP_IF_FALSE,JUMP_IF_TRUE,PRINT,POP,HALT
 };
 
-struct Frame { std::shared_ptr<Chunk> chunk; size_t ip{}; std::vector<Value> locals; };
+struct Frame { std::shared_ptr<Chunk> chunk; size_t ip{}; std::vector<std::shared_ptr<Cell>> locals; std::vector<std::shared_ptr<Cell>> freeCells; };
 struct Handler { size_t frameIndex{}; size_t target{}; size_t stackDepth{}; };
 
 class VM {
@@ -102,6 +103,8 @@ class VM {
   std::vector<Value> stack;
   std::vector<Frame> frames;
   std::vector<Handler> handlers;
+  std::shared_ptr<Cell> capture(const Frame& f,const std::string& name){auto it=f.chunk->localNames.find(name);if(it!=f.chunk->localNames.end()){auto i=it->second;if(i>=f.locals.size())throw std::runtime_error("invalid captured local");return f.locals[i];}for(size_t i=0;i<f.chunk->freeNames.size();++i)if(f.chunk->freeNames[i]==name){if(i>=f.freeCells.size())throw std::runtime_error("invalid captured free");return f.freeCells[i];}throw std::runtime_error("cannot capture lexical name: "+name);}
+  std::shared_ptr<Function> makeFunction(const Frame& f,std::shared_ptr<Chunk> c){auto fn=std::make_shared<Function>();fn->chunk=std::move(c);for(const auto& n:fn->chunk->freeNames)fn->freeCells.push_back(capture(f,n));return fn;}
   std::unordered_map<std::string,Value> globals;
 
   void raise(Value error){
@@ -139,7 +142,7 @@ class VM {
 public:
   explicit VM(std::shared_ptr<Chunk> c):root(std::move(c)){}
   Value run(){
-    frames.push_back({root,0,{}});
+    frames.push_back({root,0,{}, {}});
     while(!frames.empty()){
       auto &f=frames.back();
       if(f.ip>=f.chunk->code.size())throw std::runtime_error("instruction pointer escaped bytecode");
@@ -148,16 +151,16 @@ public:
         case CONST:push(f.chunk->constants.at(ins.arg));break;
         case LOAD_GLOBAL:{auto it=globals.find(ins.text);if(it==globals.end())throw std::runtime_error("undefined variable: "+ins.text);push(it->second);break;}
         case STORE_GLOBAL:globals[ins.text]=pop();break;
-        case LOAD_LOCAL:if(ins.arg<0||(size_t)ins.arg>=f.locals.size())throw std::runtime_error("invalid local");push(f.locals[ins.arg]);break;
-        case STORE_LOCAL:{auto v=pop();if(ins.arg<0)throw std::runtime_error("invalid local");if((size_t)ins.arg>=f.locals.size())f.locals.resize(ins.arg+1);f.locals[ins.arg]=v;break;}
-        case MAKE_FUNCTION:case MAKE_CLOSURE:push(std::make_shared<Function>(Function{f.chunk->functions.at(ins.arg)}));break;
+        case LOAD_LOCAL:if(ins.arg<0||(size_t)ins.arg>=f.locals.size())throw std::runtime_error("invalid local");push(f.locals[ins.arg]->value);break;
+        case STORE_LOCAL:{auto v=pop();if(ins.arg<0)throw std::runtime_error("invalid local");if((size_t)ins.arg>=f.locals.size())f.locals.resize(ins.arg+1);if(!f.locals[ins.arg])f.locals[ins.arg]=std::make_shared<Cell>();f.locals[ins.arg]->value=v;break;}
+        case MAKE_FUNCTION:case MAKE_CLOSURE:push(makeFunction(f,f.chunk->functions.at(ins.arg)));break;
         case CALL:{
           auto argc=ins.arg; if(argc<0||(size_t)argc>stack.size())throw std::runtime_error("stack underflow during call");
           std::vector<Value> args(stack.end()-argc,stack.end());stack.resize(stack.size()-argc);
           auto callee=pop();auto fn=std::get_if<std::shared_ptr<Function>>(&callee);
           if(!fn||!*fn)throw std::runtime_error("attempted to BONK a non-function");
           if(args.size()!=(*fn)->chunk->arity)throw std::runtime_error((*fn)->chunk->name+" expected "+std::to_string((*fn)->chunk->arity)+" argument(s), got "+std::to_string(args.size()));
-          frames.push_back({(*fn)->chunk,0,std::move(args)});break;
+          {std::vector<std::shared_ptr<Cell>> locals;for(auto& a:args)locals.push_back(std::make_shared<Cell>(Cell{std::move(a)}));frames.push_back({(*fn)->chunk,0,std::move(locals),(*fn)->freeCells});break;}
         }
         case RETURN:{auto v=pop();const size_t leaving=frames.size()-1;handlers.erase(std::remove_if(handlers.begin(),handlers.end(),[&](const Handler&h){return h.frameIndex>=leaving;}),handlers.end());frames.pop_back();if(frames.empty())return v;push(v);break;}
         case MAKE_ARRAY:{auto n=(size_t)ins.arg;if(n>stack.size())throw std::runtime_error("array stack underflow");auto a=std::make_shared<Array>();a->values.assign(stack.end()-n,stack.end());stack.resize(stack.size()-n);push(a);break;}
@@ -177,7 +180,8 @@ public:
         case SETUP_CATCH:handlers.push_back({frames.size()-1,static_cast<size_t>(ins.arg),stack.size()});break;
         case POP_CATCH:if(handlers.empty())throw std::runtime_error("catch handler stack underflow");handlers.pop_back();break;
         case THROW:{auto error=pop();raise(std::move(error));break;}
-        case LOAD_FREE:case STORE_FREE:throw std::runtime_error("closures are not yet enabled in native runtime");
+        case LOAD_FREE:if(ins.arg<0||(size_t)ins.arg>=f.freeCells.size())throw std::runtime_error("invalid captured slot");push(f.freeCells[ins.arg]->value);break;
+        case STORE_FREE:{auto v=pop();if(ins.arg<0||(size_t)ins.arg>=f.freeCells.size())throw std::runtime_error("invalid captured slot");f.freeCells[ins.arg]->value=v;break;}
         default:throw std::runtime_error("unknown opcode");
       }
     }

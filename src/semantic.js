@@ -20,7 +20,11 @@ class Scope {
 }
 
 export class SemanticAnalyzer {
-  constructor(){ this.global=new Scope(null,"global"); this.functionTypes=new Map(); }
+  constructor(){ this.global=new Scope(null,"global"); this.functionTypes=new Map(); this.declareBuiltins(); }
+  declareBuiltins(){
+    const names=["LEN","PUSH","POP","TYPE","TO_STRING","ABS","SQRT","FLOOR","CEIL","SUBSTR","UPPER","LOWER","HAS","KEYS","RANGE","NUMBER","MIN","MAX","POW","CLAMP","ASSERT","REPEAT","TRIM","REPLACE","SPLIT","JOIN","READ_FILE","WRITE_FILE","EXISTS","CWD","JOIN_PATH","ENV","ARGS","TIME_MS","SLEEP_MS"];
+    for(const name of names)this.global.declare(name,{kind:"builtin",type:TYPE.FUNCTION,arity:null,returnType:TYPE.UNKNOWN});
+  }
   analyze(program){
     this.predeclareFunctions(program.body,this.global);
     for(const s of program.body) if(s.type==="ImportDecl"){ if(this.global.names.has(s.alias)) throw new GlopSemanticError(`Duplicate declaration of "${s.alias}" in the same scope`,"DUPLICATE_DECLARATION"); this.global.declare(s.alias,{kind:"module",type:TYPE.OBJECT}); }
@@ -101,7 +105,7 @@ export class SemanticAnalyzer {
         const b=n.callee.type==="Identifier"?scope.resolve(n.callee.name):null;
         const ct=this.expression(n.callee,scope); if(ct!==TYPE.UNKNOWN&&ct!==TYPE.FUNCTION) throw new GlopSemanticError(`Cannot BONK a ${ct}`,"TYPE_ERROR");
         for(const a of n.args)this.expression(a,scope);
-        if(b?.kind==="function"&&n.args.length!==b.arity) throw new GlopSemanticError(`${n.callee.name} expects ${b.arity} argument(s), got ${n.args.length}`,"ARITY_ERROR");
+        if((b?.kind==="function"||b?.kind==="builtin")&&b.arity!==null&&n.args.length!==b.arity) throw new GlopSemanticError(`${n.callee.name} expects ${b.arity} argument(s), got ${n.args.length}`,"ARITY_ERROR");
         return b?.returnType??TYPE.UNKNOWN;
       }
       case "Array": for(const e of n.elements)this.expression(e,scope); return TYPE.ARRAY;

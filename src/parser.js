@@ -45,8 +45,7 @@ export class Parser{
   if(this.match("number")||this.match("string"))return node("Literal",{value:t.value});
   if(this.match("BASED"))return node("Literal",{value:true});if(this.match("CAP"))return node("Literal",{value:false});if(this.match("VOID"))return node("Literal",{value:null});
   if(this.match("BONK")){let callee=this.primary();for(;;){if(this.match(".")){callee=node("Member",{object:callee,property:this.expect("identifier").value});continue}if(this.match("[")){const index=this.expression();this.expect("]");callee=node("Index",{object:callee,index});continue}break}this.expect("(");const args=[];if(!this.check(")")){do args.push(this.expression());while(this.match(","))}this.expect(")");return node("Call",{callee,args})}
-  const builtinNames=new Set(["LEN","PUSH","POP","TYPE","TO_STRING","ABS","SQRT","FLOOR","CEIL","SUBSTR","UPPER","LOWER","HAS","KEYS","RANGE","NUMBER","MIN","MAX","POW","CLAMP","ASSERT","REPEAT","TRIM","REPLACE","SPLIT","JOIN","READ_FILE","WRITE_FILE","EXISTS","CWD","JOIN_PATH","ENV","ARGS","TIME_MS","SLEEP_MS","INSTANCEOF"]);
-  if(this.check("identifier")||builtinNames.has(t.value)){this.advance();return node("Identifier",{name:t.value});}
+  if(this.match("identifier"))return node("Identifier",{name:t.value});
   if(this.match("(")){const e=this.expression();this.expect(")");return e}
   if(this.match("[")){const elements=[];if(!this.check("]")){do elements.push(this.expression());while(this.match(","))}this.expect("]");return node("Array",{elements})}
   if(this.match("{")){const properties=[];if(!this.check("}")){do{const key=this.expect("identifier").value;this.expect(":");properties.push({key,value:this.expression()})}while(this.match(","))}this.expect("}");return node("Object",{properties})}

@@ -204,6 +204,44 @@ public:
  }
 };
 
+static Value nativeLen(const std::vector<Value>& a){
+  if(a.size()!=1) throw Error("LEN expects 1 argument");
+  const auto& v=a[0];
+  if(auto p=std::get_if<std::string>(&v.v)) return (double)p->size();
+  if(auto p=std::get_if<std::shared_ptr<Value::Array>>(&v.v)) return (double)(*p)->size();
+  if(auto p=std::get_if<std::shared_ptr<Value::Object>>(&v.v)) return (double)(*p)->size();
+  throw Error("LEN expects string, array, or object");
+}
+static Value nativePush(const std::vector<Value>& a){
+  if(a.size()!=2) throw Error("PUSH expects 2 arguments");
+  auto p=std::get_if<std::shared_ptr<Value::Array>>(&a[0].v);
+  if(!p) throw Error("PUSH expects an array");
+  (*p)->push_back(a[1]); return (double)(*p)->size();
+}
+static Value nativePop(const std::vector<Value>& a){
+  if(a.size()!=1) throw Error("POP expects 1 argument");
+  auto p=std::get_if<std::shared_ptr<Value::Array>>(&a[0].v);
+  if(!p) throw Error("POP expects an array");
+  if((*p)->empty()) throw Error("POP from empty array");
+  Value x=(*p)->back(); (*p)->pop_back(); return x;
+}
+static Value nativeType(const std::vector<Value>& a){
+  if(a.size()!=1) throw Error("TYPE expects 1 argument");
+  const auto& v=a[0];
+  if(std::holds_alternative<std::monostate>(v.v)) return "void";
+  if(std::holds_alternative<bool>(v.v)) return "bool";
+  if(std::holds_alternative<double>(v.v)) return "number";
+  if(std::holds_alternative<std::string>(v.v)) return "string";
+  if(std::holds_alternative<std::shared_ptr<Value::Array>>(v.v)) return "array";
+  if(std::holds_alternative<std::shared_ptr<Value::Object>>(v.v)) return "object";
+  return std::holds_alternative<std::function<Value(const std::vector<Value>&)>>(v.v) ? "native-function" : "function";
+}
+static Value nativeAbs(const std::vector<Value>& a){ if(a.size()!=1) throw Error("ABS expects 1 argument"); return std::fabs(num(a[0])); }
+static Value nativeSqrt(const std::vector<Value>& a){ if(a.size()!=1) throw Error("SQRT expects 1 argument"); double x=num(a[0]); if(x<0) throw Error("SQRT expects a non-negative number"); return std::sqrt(x); }
+static Value nativeFloor(const std::vector<Value>& a){ if(a.size()!=1) throw Error("FLOOR expects 1 argument"); return std::floor(num(a[0])); }
+static Value nativeCeil(const std::vector<Value>& a){ if(a.size()!=1) throw Error("CEIL expects 1 argument"); return std::ceil(num(a[0])); }
+static Value nativeToString(const std::vector<Value>& a){ if(a.size()!=1) throw Error("TO_STRING expects 1 argument"); return show(a[0]); }
+
 static std::string readFile(const std::string&f){std::ifstream in(f);if(!in)throw Error("cannot open "+f);return std::string((std::istreambuf_iterator<char>(in)),{});}
 }
 

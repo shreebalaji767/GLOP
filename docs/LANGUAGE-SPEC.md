@@ -112,7 +112,7 @@ Rules:
 - Each module has its own global environment.
 - Functions exported from a module retain that module's global environment, so module-private state remains attached to the defining module.
 - The current export object is a snapshot of exported bindings at module completion; live ES-module-style bindings are a future semantic upgrade.
-- The native single-file `.gbc` path currently rejects multi-file `STEAL/FLEX` programs rather than silently dropping dependencies.
+- `glop build` recursively bundles multi-file `STEAL/FLEX` programs into one GBC2 file. Dependencies are initialized once in dependency-before-dependent order, each module receives imported namespaces as factory parameters, and exported functions retain captured module state. Circular imports are rejected during bundling.
 
 
 ## Interactive execution

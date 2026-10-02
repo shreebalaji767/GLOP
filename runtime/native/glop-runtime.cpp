@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include <algorithm>
 #include <cmath>
 
 namespace glop {
@@ -82,7 +83,7 @@ static std::string display(const Value& v){
   if(auto p=std::get_if<double>(&v)){if(std::isfinite(*p)&&std::floor(*p)==*p)return std::to_string((long long)*p);return std::to_string(*p);}
   if(auto p=std::get_if<std::string>(&v))return *p;
   if(auto p=std::get_if<std::shared_ptr<Array>>(&v)){std::string s="[";for(size_t i=0;i<(*p)->values.size();i++){if(i)s+=", ";s+=display((*p)->values[i]);}return s+"]";}
-  if(auto p=std::get_if<std::shared_ptr<Object>>(&v))return "[object]";
+  if(auto p=std::get_if<std::shared_ptr<Object>>(&v)){std::string s="{",sep="";for(const auto&[k,val]:(*p)->values){s+=sep+k+":"+display(val);sep=", ";}return s+"}";}
   return "[function]";
 }
 
@@ -94,12 +95,26 @@ enum : uint8_t {
 };
 
 struct Frame { std::shared_ptr<Chunk> chunk; size_t ip{}; std::vector<Value> locals; };
+struct Handler { size_t frameIndex{}; size_t target{}; size_t stackDepth{}; };
 
 class VM {
   std::shared_ptr<Chunk> root;
   std::vector<Value> stack;
   std::vector<Frame> frames;
+  std::vector<Handler> handlers;
   std::unordered_map<std::string,Value> globals;
+
+  void raise(Value error){
+    while(!handlers.empty()){
+      Handler h=handlers.back(); handlers.pop_back();
+      while(frames.size()>h.frameIndex+1) frames.pop_back();
+      if(frames.empty()) break;
+      auto &f=frames.back(); f.ip=h.target;
+      if(stack.size()>h.stackDepth) stack.resize(h.stackDepth);
+      push(std::move(error)); return;
+    }
+    throw std::runtime_error("unhandled OOPSIE: "+display(error));
+  }
 
   Value pop(){if(stack.empty())throw std::runtime_error("GLOP stack underflow");auto v=stack.back();stack.pop_back();return v;}
   void push(Value v){stack.push_back(std::move(v));}
@@ -144,10 +159,10 @@ public:
           if(args.size()!=(*fn)->chunk->arity)throw std::runtime_error((*fn)->chunk->name+" expected "+std::to_string((*fn)->chunk->arity)+" argument(s), got "+std::to_string(args.size()));
           frames.push_back({(*fn)->chunk,0,std::move(args)});break;
         }
-        case RETURN:{auto v=pop();frames.pop_back();if(frames.empty())return v;push(v);break;}
+        case RETURN:{auto v=pop();const size_t leaving=frames.size()-1;handlers.erase(std::remove_if(handlers.begin(),handlers.end(),[&](const Handler&h){return h.frameIndex>=leaving;}),handlers.end());frames.pop_back();if(frames.empty())return v;push(v);break;}
         case MAKE_ARRAY:{auto n=(size_t)ins.arg;if(n>stack.size())throw std::runtime_error("array stack underflow");auto a=std::make_shared<Array>();a->values.assign(stack.end()-n,stack.end());stack.resize(stack.size()-n);push(a);break;}
-        case GET_INDEX:{auto idx=pop();auto obj=pop();auto i=(size_t)number(idx);if(auto a=std::get_if<std::shared_ptr<Array>>(&obj)){if(i>=(*a)->values.size())throw std::runtime_error("array index out of range");push((*a)->values[i]);}else throw std::runtime_error("GET_INDEX supports arrays in native runtime");break;}
-        case SET_INDEX:{auto val=pop();auto idx=pop();auto obj=pop();auto i=(size_t)number(idx);auto a=std::get_if<std::shared_ptr<Array>>(&obj);if(!a||i>=(*a)->values.size())throw std::runtime_error("array index out of range");(*a)->values[i]=val;push(val);break;}
+        case GET_INDEX:{auto idx=pop(),obj=pop();if(auto a=std::get_if<std::shared_ptr<Array>>(&obj)){auto i=number(idx);if(i<0||std::floor(i)!=i||static_cast<size_t>(i)>=(*a)->values.size())throw std::runtime_error("array index out of range");push((*a)->values[static_cast<size_t>(i)]);}else if(auto o=std::get_if<std::shared_ptr<Object>>(&obj)){if(!std::holds_alternative<std::string>(idx))throw std::runtime_error("object index must be a string");auto it=(*o)->values.find(std::get<std::string>(idx));push(it==(*o)->values.end()?Value{}:it->second);}else throw std::runtime_error("cannot index this value");break;}
+        case SET_INDEX:{auto val=pop(),idx=pop(),obj=pop();if(auto a=std::get_if<std::shared_ptr<Array>>(&obj)){auto i=number(idx);if(i<0||std::floor(i)!=i||static_cast<size_t>(i)>=(*a)->values.size())throw std::runtime_error("array index out of range");(*a)->values[static_cast<size_t>(i)]=val;push(val);}else if(auto o=std::get_if<std::shared_ptr<Object>>(&obj)){if(!std::holds_alternative<std::string>(idx))throw std::runtime_error("object index must be a string");(*o)->values[std::get<std::string>(idx)]=val;push(val);}else throw std::runtime_error("cannot index this value");break;}
         case ADD:case SUB:case MUL:case DIV:case MOD:{auto b=pop(),a=pop();push(binary(ins.op,a,b));break;}
         case EQ:{auto b=pop(),a=pop();push(equal(a,b));break;} case NE:{auto b=pop(),a=pop();push(!equal(a,b));break;}
         case LT:{auto b=pop(),a=pop();push(number(a)<number(b));break;} case LTE:{auto b=pop(),a=pop();push(number(a)<=number(b));break;}
@@ -156,9 +171,13 @@ public:
         case JUMP:f.ip=ins.arg;break; case JUMP_IF_FALSE:if(!truthy(pop()))f.ip=ins.arg;break; case JUMP_IF_TRUE:if(truthy(pop()))f.ip=ins.arg;break;
         case PRINT:std::cout<<display(pop())<<"\n";break; case POP:pop();break;
         case HALT:return pop();
-        case MAKE_OBJECT:throw std::runtime_error("objects are not yet enabled in native runtime");
-        case GET_MEMBER:case SET_MEMBER:case SETUP_CATCH:case POP_CATCH:case THROW:case LOAD_FREE:case STORE_FREE:
-          throw std::runtime_error("opcode not yet enabled in native runtime: "+std::to_string(ins.op));
+        case MAKE_OBJECT:{auto n=static_cast<size_t>(ins.arg);if(stack.size()<n*2)throw std::runtime_error("object stack underflow");auto o=std::make_shared<Object>();auto start=stack.size()-n*2;for(size_t i=0;i<n;i++){auto key=stack[start+i*2],value=stack[start+i*2+1];if(!std::holds_alternative<std::string>(key))throw std::runtime_error("object key must be a string");o->values[std::get<std::string>(key)]=value;}stack.resize(start);push(o);break;}
+        case GET_MEMBER:{auto key=pop(),obj=pop();if(!std::holds_alternative<std::string>(key))throw std::runtime_error("member name must be a string");if(auto o=std::get_if<std::shared_ptr<Object>>(&obj)){auto it=(*o)->values.find(std::get<std::string>(key));push(it==(*o)->values.end()?Value{}:it->second);}else throw std::runtime_error("member access requires an object");break;}
+        case SET_MEMBER:{auto value=pop(),key=pop(),obj=pop();if(!std::holds_alternative<std::string>(key))throw std::runtime_error("member name must be a string");if(auto o=std::get_if<std::shared_ptr<Object>>(&obj)){(*o)->values[std::get<std::string>(key)]=value;push(value);}else throw std::runtime_error("member assignment requires an object");break;}
+        case SETUP_CATCH:handlers.push_back({frames.size()-1,static_cast<size_t>(ins.arg),stack.size()});break;
+        case POP_CATCH:if(handlers.empty())throw std::runtime_error("catch handler stack underflow");handlers.pop_back();break;
+        case THROW:{auto error=pop();raise(std::move(error));break;}
+        case LOAD_FREE:case STORE_FREE:throw std::runtime_error("closures are not yet enabled in native runtime");
         default:throw std::runtime_error("unknown opcode");
       }
     }

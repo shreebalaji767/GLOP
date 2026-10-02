@@ -17,6 +17,6 @@ OOPS Person {
 
 GLOP person = NEW Person("RAVI", 25)
 YAP person.name
-YAP BONK person.greet()
-YAP BONK person.birthday()
+YAP person.greet()
+YAP person.birthday()
 YAP person.age

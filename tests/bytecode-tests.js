@@ -9,7 +9,7 @@ const execute=source=>{const output=[];const result=runBytecode(compileBytecode(
 assert.deepEqual(execute("GLOP x=[10,20,30] YAP x[1]").output,[20]);
 assert.deepEqual(execute("TRY { OOPSIE «BAD» } CATCH error { YAP error }").output,["BAD"]);
 assert.deepEqual(execute("WIZARD fail(){ OOPSIE «BOOM» } TRY { BONK fail() } CATCH error { YAP error }").output,["BOOM"]);
-assert.deepEqual(execute("TRY { YAP 1 OOPSIE «STOP» YAP 2 } CATCH error { YAP error }").output,["1","STOP"]);
+assert.deepEqual(execute("TRY { YAP 1 OOPSIE «STOP» YAP 2 } CATCH error { YAP error }").output,[1,"STOP"]);
 assert.deepEqual(execute("TRY { TRY { OOPSIE «INNER» } CATCH e { OOPSIE e } } CATCH outer { YAP outer }").output,["INNER"]);
 assert.deepEqual(execute("YAP BASED && BASED YAP CAP || BASED").output,[true,true]);
 assert.deepEqual(execute("GLOP x=[10,20] x[1]=99 YAP x[1]").output,[99]);

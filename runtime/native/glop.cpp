@@ -571,7 +571,7 @@ static std::string readFile(const std::string&f){std::ifstream in(f);if(!in)thro
 }
 
 
-static bool gPlainDiagnostics=false;
+static Diagnostic makeDiagnostic(const std::string&message,const SourcePos*pos);\n\nstatic bool gPlainDiagnostics=false;
 static std::string gSourcePath;
 static std::string gSourceText;
 

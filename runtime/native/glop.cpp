@@ -705,7 +705,7 @@ int main(int argc,char**argv){
     env->vars["JOIN"]=glop::Value(glop::nativeJoin);
     for(auto&s:ast)s->exec(env);
     return 0;
-  }catch(const glop::Error&e){auto d=makeDiagnostic(e.what(),e.hasPos?&e.pos:nullptr);std::cerr<<d.format(gPlainDiagnostics,gSourcePath,gSourceText)<<"\n";return 1;}
+  }catch(const glop::Error&e){std::cerr<<chaosDiagnostic(e.what(),gPlainDiagnostics,e.hasPos?&e.pos:nullptr)<<"\n";return 1;}
   catch(const glop::ReturnSignal&){std::cerr<<"GLOP-E2003 [YEET CRIME]\\n  YEET ESCAPED A WIZARD. THIS IS NOT A NORMAL EXIT.\\n  Technical: YEET outside WIZARD\\n";return 1;}
   catch(...){std::cerr<<chaosDiagnostic("unknown runtime failure", gPlainDiagnostics)<<"\n";return 1;}
 }

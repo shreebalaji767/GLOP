@@ -161,7 +161,7 @@ struct TargetAssign:Stmt{
     auto rhs=value->eval(e);
     if(auto n=dynamic_cast<Name*>(target.get())){e->set(n->n,applyAssign(op,e->get(n->n),rhs));return;}
     if(auto m=dynamic_cast<Member*>(target.get())){
-      auto obj=m->o->eval(e);if(auto ip=std::get_if<std::shared_ptr<Instance>>(&obj.v)){auto inst=*ip;Value old=inst->fields.count(m->k)?inst->fields.at(m->k):Value();inst->fields[m->k]=applyAssign(op,old,rhs);return;}auto p=std::get_if<std::shared_ptr<Value::Object>>(&obj.v);if(!p)throw Error("member assignment requires object or instance");Value old=(*p)->count(m->k)?(*p)->at(m->k):Value();(*p)[m->k]=applyAssign(op,old,rhs);return;
+      auto obj=m->o->eval(e);if(auto ip=std::get_if<std::shared_ptr<Instance>>(&obj.v)){auto inst=*ip;Value old=inst->fields.count(m->k)?inst->fields.at(m->k):Value();inst->fields[m->k]=applyAssign(op,old,rhs);return;}auto p=std::get_if<std::shared_ptr<Value::Object>>(&obj.v);if(!p)throw Error("member assignment requires object or instance");Value old=(*p)->count(m->k)?(*p)->at(m->k):Value();(*p)->operator[](m->k)=applyAssign(op,old,rhs);return;
     }
     if(auto q=dynamic_cast<Index*>(target.get())){
       auto obj=q->o->eval(e),idx=q->i->eval(e);auto p=std::get_if<std::shared_ptr<Value::Array>>(&obj.v);
@@ -173,8 +173,6 @@ struct TargetAssign:Stmt{
     throw Error("invalid assignment target");
   }
 };
-Value Member::eval(std::shared_ptr<Env>e){auto x=o->eval(e);if(auto ip=std::get_if<std::shared_ptr<Instance>>(&x.v)){auto inst=*ip;if(inst->fields.count(k))return inst->fields.at(k);auto it=inst->klass->methods.find(k);if(it!=inst->klass->methods.end()){auto method=it->second;return std::function<Value(const std::vector<Value>&)>([method,inst](const std::vector<Value>&args){return method->call(args,Value(inst));});}throw Error("unknown instance member: "+k);}auto p=std::get_if<std::shared_ptr<Value::Object>>(&x.v);if(!p)throw Error("member access requires object or instance");return (*p)->count(k)?(*p)->at(k):Value();}
-
 struct FnDecl:Stmt{std::string n;std::vector<std::string>p;std::vector<std::unique_ptr<Stmt>>b;void exec(std::shared_ptr<Env>e)override{auto f=std::make_shared<Function>();f->params=p;f->body=std::move(b);f->closure=e;e->vars[n]=f;}};
 struct MethodDef { std::string n; std::vector<std::string> p; std::vector<std::unique_ptr<Stmt>> b; };
 struct ClassDecl:Stmt{std::string n;std::vector<MethodDef>methods;void exec(std::shared_ptr<Env>e)override{auto c=std::make_shared<Class>();c->name=n;c->closure=e;for(auto&d:methods){auto f=std::make_shared<Function>();f->params=d.p;f->body=std::move(d.b);f->closure=e;c->methods[d.n]=f;}e->vars[n]=c;}};
@@ -363,7 +361,7 @@ static Value nativeKeys(const std::vector<Value>& a){
   auto p=std::get_if<std::shared_ptr<Value::Object>>(&a[0].v);
   if(!p) throw Error("KEYS expects an object");
   auto out=std::make_shared<Value::Array>();
-  for(const auto& kv:*p) out->push_back(kv.first);
+  for(const auto& kv:**p) out->push_back(kv.first);
   return out;
 }
 static Value nativeRange(const std::vector<Value>& a){

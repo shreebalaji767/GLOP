@@ -7,9 +7,14 @@ export class GlopRuntimeError extends Error {
   }
 }
 
+export class GlopCell {
+  constructor(value = null) { this.value = value; }
+}
+
 export class GlopFunction {
-  constructor(chunk) {
+  constructor(chunk, freeCells = []) {
     this.chunk = chunk;
+    this.freeCells = freeCells;
   }
 }
 
@@ -22,6 +27,7 @@ export class VM {
     this.ip = 0;
     this.chunk = bytecode;
     this.locals = null;
+    this.freeCells = [];
     this.output = output;
   }
 
@@ -30,45 +36,67 @@ export class VM {
     return this.stack.pop();
   }
 
-  currentConstants() {
-    return this.chunk.constants;
+  currentConstants() { return this.chunk.constants; }
+
+  captureCell(name) {
+    if (this.locals && this.chunk !== this.bc) {
+      const localIndex = this.locals.__names?.get(name);
+      if (localIndex !== undefined) return this.locals[localIndex];
+    }
+    const freeIndex = this.chunk.freeNames?.indexOf(name) ?? -1;
+    if (freeIndex >= 0) return this.freeCells[freeIndex];
+    throw new GlopRuntimeError("cannot capture lexical name: " + name);
+  }
+
+  makeClosure(chunk) {
+    const cells = (chunk.freeNames ?? []).map(name => this.captureCell(name));
+    return new GlopFunction(chunk, cells);
   }
 
   run() {
     while (true) {
-      if (this.ip >= this.chunk.code.length) {
-        throw new GlopRuntimeError("instruction pointer escaped bytecode");
-      }
-
+      if (this.ip >= this.chunk.code.length) throw new GlopRuntimeError("instruction pointer escaped bytecode");
       const ins = this.chunk.code[this.ip++];
 
       switch (ins.op) {
-        case OP.CONST:
-          this.stack.push(this.currentConstants()[ins.arg]);
-          break;
+        case OP.CONST: this.stack.push(this.currentConstants()[ins.arg]); break;
 
         case OP.LOAD_GLOBAL:
           if (!this.globals.has(ins.arg)) throw new GlopRuntimeError("undefined variable: " + ins.arg);
           this.stack.push(this.globals.get(ins.arg));
           break;
 
-        case OP.STORE_GLOBAL:
-          this.globals.set(ins.arg, this.pop());
-          break;
+        case OP.STORE_GLOBAL: this.globals.set(ins.arg, this.pop()); break;
 
-        case OP.LOAD_LOCAL:
+        case OP.LOAD_LOCAL: {
           if (!this.locals || ins.arg >= this.locals.length) throw new GlopRuntimeError("invalid local slot: " + ins.arg);
-          this.stack.push(this.locals[ins.arg]);
-          break;
-
-        case OP.STORE_LOCAL: {
-          if (!this.locals) throw new GlopRuntimeError("local store outside function");
-          this.locals[ins.arg] = this.pop();
+          this.stack.push(this.locals[ins.arg].value);
           break;
         }
 
+        case OP.STORE_LOCAL: {
+          if (!this.locals) throw new GlopRuntimeError("local store outside function");
+          if (!this.locals[ins.arg]) this.locals[ins.arg] = new GlopCell();
+          this.locals[ins.arg].value = this.pop();
+          break;
+        }
+
+        case OP.LOAD_FREE:
+          if (!this.freeCells[ins.arg]) throw new GlopRuntimeError("invalid captured slot: " + ins.arg);
+          this.stack.push(this.freeCells[ins.arg].value);
+          break;
+
+        case OP.STORE_FREE:
+          if (!this.freeCells[ins.arg]) throw new GlopRuntimeError("invalid captured slot: " + ins.arg);
+          this.freeCells[ins.arg].value = this.pop();
+          break;
+
+        case OP.MAKE_CLOSURE:
+          this.stack.push(this.makeClosure(this.chunk.functions[ins.arg]));
+          break;
+
         case OP.MAKE_FUNCTION:
-          this.stack.push(new GlopFunction(this.chunk.functions[ins.arg]));
+          this.stack.push(this.makeClosure(this.chunk.functions[ins.arg]));
           break;
 
         case OP.CALL: {
@@ -76,36 +104,34 @@ export class VM {
           if (this.stack.length < argc + 1) throw new GlopRuntimeError("stack underflow during call");
           const args = this.stack.splice(this.stack.length - argc, argc);
           const callee = this.pop();
-
-          if (!(callee instanceof GlopFunction)) {
-            throw new GlopRuntimeError("attempted to BONK a non-function");
-          }
+          if (!(callee instanceof GlopFunction)) throw new GlopRuntimeError("attempted to BONK a non-function");
           if (args.length !== callee.chunk.arity) {
-            throw new GlopRuntimeError(
-              callee.chunk.name + " expected " + callee.chunk.arity + " argument(s), got " + args.length
-            );
+            throw new GlopRuntimeError(callee.chunk.name + " expected " + callee.chunk.arity + " argument(s), got " + args.length);
           }
 
           this.frames.push({
             chunk: this.chunk,
             ip: this.ip,
-            locals: this.locals
+            locals: this.locals,
+            freeCells: this.freeCells
           });
 
+          const localCells = args.map(value => new GlopCell(value));
           this.chunk = callee.chunk;
           this.ip = 0;
-          this.locals = args;
+          this.locals = localCells;
+          this.freeCells = callee.freeCells;
           break;
         }
 
         case OP.RETURN: {
           const value = this.pop();
           if (!this.frames.length) return value;
-
           const frame = this.frames.pop();
           this.chunk = frame.chunk;
           this.ip = frame.ip;
           this.locals = frame.locals;
+          this.freeCells = frame.freeCells;
           this.stack.push(value);
           break;
         }

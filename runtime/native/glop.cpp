@@ -146,9 +146,23 @@ struct SuperMember:Expr{std::string k;explicit SuperMember(std::string x):k(std:
 }};
 struct Index:Expr{std::unique_ptr<Expr>o,i;Value eval(std::shared_ptr<Env>e)override{auto x=o->eval(e),q=i->eval(e);size_t n=(size_t)num(q);if(auto p=std::get_if<std::shared_ptr<Value::Array>>(&x.v)){double d=num(q);if(d<0||std::floor(d)!=d)throw Error("array index must be an integer");if(n>=(*p)->size())throw Error("array index out of range");return (*p)->at(n);}throw Error("index requires array");}};
 
-struct Function {std::weak_ptr<Class> ownerClass; std::vector<std::string>params;std::vector<std::unique_ptr<Stmt>> body;std::shared_ptr<Env>closure;Value call(const std::vector<Value>&args, Value thisValue=Value()){
+struct Function {
+  std::weak_ptr<Class> ownerClass;
+  std::string name="<anonymous>";
+  std::vector<std::string>params;std::vector<std::unique_ptr<Stmt>> body;std::shared_ptr<Env>closure;Value call(const std::vector<Value>&args, Value thisValue=Value()){
   if(args.size()!=params.size())throw Error("wrong argument count");auto e=std::make_shared<Env>(closure);if(!std::holds_alternative<std::monostate>(thisValue.v)){e->vars["THIS"]=thisValue; if(auto owner=ownerClass.lock()) e->vars["__SUPER_OWNER"]=Value(owner);}for(size_t i=0;i<args.size();i++)e->vars[params[i]]=args[i];
-  try{for(auto&s:body)s->exec(e);}catch(ReturnSignal&r){return r.value;}return Value();
+  static thread_local std::vector<std::string> callStack;
+  struct StackGuard { std::vector<std::string>& stack; explicit StackGuard(std::vector<std::string>&s,const std::string&n):stack(s){stack.push_back(n);} ~StackGuard(){stack.pop_back();} };
+  StackGuard guard(callStack,name);
+  try{for(auto&s:body)s->exec(e);}catch(ReturnSignal&r){return r.value;}catch(const Error&x){
+    if(callStack.size()==1){
+      std::string trace="\n\n  CALL STACK\n";
+      for(auto it=callStack.rbegin();it!=callStack.rend();++it) trace+="    -> "+*it+"\n";
+      throw Error(std::string(x.what())+trace);
+    }
+    throw;
+  }
+  return Value();
 }};
 Value Member::eval(std::shared_ptr<Env>e){auto x=o->eval(e);if(auto ip=std::get_if<std::shared_ptr<Instance>>(&x.v)){auto inst=*ip;if(inst->fields.count(k))return inst->fields.at(k);auto method=inst->klass->findMethod(k);if(method){return std::function<Value(const std::vector<Value>&)>([method,inst](const std::vector<Value>&args){return method->call(args,Value(inst));});}throw Error("unknown instance member: "+k);}auto p=std::get_if<std::shared_ptr<Value::Object>>(&x.v);if(!p)throw Error("member access requires object or instance");return (*p)->count(k)?(*p)->at(k):Value();}
 
@@ -206,7 +220,7 @@ struct TargetAssign:Stmt{
     throw Error("invalid assignment target");
   }
 };
-struct FnDecl:Stmt{std::string n;std::vector<std::string>p;std::vector<std::unique_ptr<Stmt>>b; FnDecl(std::string x,std::vector<std::string>q,std::vector<std::unique_ptr<Stmt>>z):n(std::move(x)),p(std::move(q)),b(std::move(z)){}void exec(std::shared_ptr<Env>e)override{auto f=std::make_shared<Function>();f->params=p;f->body=std::move(b);f->closure=e;e->vars[n]=f;}};
+struct FnDecl:Stmt{std::string n;std::vector<std::string>p;std::vector<std::unique_ptr<Stmt>>b; FnDecl(std::string x,std::vector<std::string>q,std::vector<std::unique_ptr<Stmt>>z):n(std::move(x)),p(std::move(q)),b(std::move(z)){}void exec(std::shared_ptr<Env>e)override{auto f=std::make_shared<Function>();f->name=n;f->params=p;f->body=std::move(b);f->closure=e;e->vars[n]=f;}};
 struct MethodDef { std::string n; std::vector<std::string> p; std::vector<std::unique_ptr<Stmt>> b; };
 struct ClassDecl:Stmt{std::string n,parentName;std::vector<MethodDef>methods; ClassDecl(std::string x,std::string p,std::vector<MethodDef>m):n(std::move(x)),parentName(std::move(p)),methods(std::move(m)){}void exec(std::shared_ptr<Env>e)override{auto c=std::make_shared<Class>();c->name=n;c->closure=e;if(!parentName.empty()){
       auto pv=e->get(parentName);
@@ -215,7 +229,7 @@ struct ClassDecl:Stmt{std::string n,parentName;std::vector<MethodDef>methods; Cl
       for(auto p=*pp;p;p=p->parent) if(p->name==n) throw Error("OOPS inheritance cycle involving: "+n);
       c->parent=*pp;
     }
-    for(auto&d:methods){auto f=std::make_shared<Function>();f->params=d.p;f->body=std::move(d.b);f->closure=e;f->ownerClass=c;c->methods[d.n]=f;}e->vars[n]=c;}};
+    for(auto&d:methods){auto f=std::make_shared<Function>();f->name=n+"."+d.n;f->params=d.p;f->body=std::move(d.b);f->closure=e;f->ownerClass=c;c->methods[d.n]=f;}e->vars[n]=c;}};
 struct NewExpr:Expr{std::unique_ptr<Expr>klass;std::vector<std::unique_ptr<Expr>>args;Value eval(std::shared_ptr<Env>e)override{auto cv=klass->eval(e);auto cp=std::get_if<std::shared_ptr<Class>>(&cv.v);if(!cp)throw Error("NEW target is not a class");auto inst=std::make_shared<Instance>();inst->klass=*cp;auto it=(*cp)->findMethod("init");std::vector<Value>a;for(auto&x:args)a.push_back(x->eval(e));if(it)it->second->call(a,Value(inst));else if(!a.empty())throw Error("constructor init not found");return inst;}};
 
 class Parser {

@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 import fs from "node:fs";
-import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { lex } from "./lexer.js";
 import { parse } from "./parser.js";
 import { analyze } from "./semantic.js";
@@ -42,9 +40,8 @@ try {
     process.exit(0);
   }
 
-  const js = compile(ast);
-
   if (cmd === "compile") {
+    const js = compile(ast);
     const oi = rest.indexOf("-o");
     const out = oi >= 0 ? rest[oi + 1] : file.replace(/\.glop$/, ".mjs");
     fs.writeFileSync(out, js);

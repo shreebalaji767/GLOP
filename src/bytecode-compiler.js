@@ -6,7 +6,7 @@ export class BytecodeCompiler {
   compile(program) {
     for (const s of program.body) if (s.type === "FunctionDecl") this.defineFunction(s);
     for (const s of program.body) if (s.type !== "FunctionDecl") this.statement(s);
-    this.b.emit(OP.CONST, this.b.constant(null)); this.b.emit(OP.HALT); return this.b;
+    this.b.location=program.loc??null; this.b.emit(OP.CONST, this.b.constant(null)); this.b.emit(OP.HALT); return this.b;
   }
 
   compileFunction(n) {
@@ -15,7 +15,7 @@ export class BytecodeCompiler {
     for(const s of n.body) if(s.type==="FunctionDecl"&&!this.locals.has(s.name)) this.locals.set(s.name,this.locals.size);
     this.loopContexts=[]; const context={locals:this.locals,freeNames:[],freeMap:new Map()}; this.contexts.push(context);
     for(const s of n.body) this.statement(s);
-    this.b.emit(OP.CONST,this.b.constant(null)); this.b.emit(OP.RETURN);
+    this.b.location=n.loc??null; this.b.emit(OP.CONST,this.b.constant(null)); this.b.emit(OP.RETURN);
     const chunk={code:this.b.code,constants:this.b.constants,functions:this.b.functions,arity:n.params.length,name:n.name,freeNames:context.freeNames,localNames:Object.fromEntries(context.locals)};
     this.contexts.pop(); this.b=previous; this.locals=previousLocals; this.loopContexts=previousLoops; return chunk;
   }
@@ -45,6 +45,7 @@ export class BytecodeCompiler {
   }
 
   statement(n) {
+    this.b.location=n.loc??null;
     switch(n.type){
       case"VarDecl":this.expr(n.value);if(this.locals){const i=this.locals.size;this.locals.set(n.name,i);this.b.emit(OP.STORE_LOCAL,i)}else this.b.emit(OP.STORE_GLOBAL,n.name);break;
       case"FunctionDecl":this.defineFunction(n);break;
@@ -102,6 +103,7 @@ export class BytecodeCompiler {
   storeName(ref){if(ref.kind==="local")this.b.emit(OP.STORE_LOCAL,ref.index);else if(ref.kind==="free")this.b.emit(OP.STORE_FREE,ref.index);else this.b.emit(OP.STORE_GLOBAL,ref.name)}
 
   expr(n){
+    this.b.location=n.loc??null;
     switch(n.type){
       case"Literal":this.b.emit(OP.CONST,this.b.constant(n.value));break;
       case"Identifier":this.loadName(this.resolveName(n.name));break;

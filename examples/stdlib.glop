@@ -1,0 +1,7 @@
+GLOP data = [10, 20, 30]
+YAP LEN(data)
+YAP TYPE(data)
+YAP BONK PUSH(data, 40)
+YAP LEN(data)
+YAP BONK POP(data)
+YAP LEN(data)

@@ -40,7 +40,7 @@ export class VM {
 
   captureCell(name) {
     if (this.locals && this.chunk !== this.bc) {
-      const localIndex = this.locals.__names?.get(name);
+      const localIndex = this.chunk.localNames?.[name];
       if (localIndex !== undefined) return this.locals[localIndex];
     }
     const freeIndex = this.chunk.freeNames?.indexOf(name) ?? -1;

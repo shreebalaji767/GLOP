@@ -8,7 +8,7 @@ export function disassembleChunk(chunk, indent=0){
   if(locals.length) lines.push(pad+"  LOCALS "+locals.map(([n,i])=>i+"="+n).join(", "));
   if(chunk.constants?.length){lines.push(pad+"  CONSTANTS");chunk.constants.forEach((v,i)=>lines.push(pad+"    ["+i+"] "+JSON.stringify(v)));}
   lines.push(pad+"  CODE");
-  chunk.code.forEach((ins,i)=>{const a=ins.arg==null?"":String(ins.arg);lines.push(pad+"    "+String(i).padStart(4,"0")+"  "+ins.op.padEnd(16," ")+a);});
+  chunk.code.forEach((ins,i)=>{const a=ins.arg==null?"":String(ins.arg);const loc=ins.loc?` @${ins.loc.line}:${ins.loc.column}`:"";lines.push(pad+"    "+String(i).padStart(4,"0")+"  "+ins.op.padEnd(16," ")+a+loc);});
   for(const fn of chunk.functions||[]) lines.push(disassembleChunk(fn,indent+2));
   return lines.join("\n");
 }

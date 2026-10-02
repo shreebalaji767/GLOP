@@ -29,7 +29,7 @@ struct Token { enum Kind { ID, NUM, STR, OP, PUNC, END } kind; std::string text;
 
 class Lexer {
   std::string s; size_t p=0; int line=1,col=1;
-  std::unordered_map<std::string,bool> kw{{"GLOP",1},{"YAP",1},{"SUS",1},{"NAH",1},{"SPIN",1},{"WIZARD",1},{"YEET",1},{"BASED",1},{"CAP",1},{"VOID",1},{"OOPSIE",1},{"TRY",1},{"CATCH",1},{"NOPE",1},{"ZOOM",1},{"BONK",1}};
+  std::unordered_map<std::string,bool> kw{{"GLOP",1},{"YAP",1},{"SUS",1},{"NAH",1},{"SPIN",1},{"WIZARD",1},{"YEET",1},{"BASED",1},{"CAP",1},{"VOID",1},{"OOPSIE",1},{"TRY",1},{"CATCH",1},{"NOPE",1},{"ZOOM",1},{"BONK",1},{"OOPS",1},{"NEW",1},{"THIS",1},{"EXTENDS",1}};
   char peek(size_t n=0) const { return p+n<s.size()?s[p+n]:'\0'; }
   char take(){char c=peek();if(!c)return 0;p++;if(c=='\n'){line++;col=1;}else col++;return c;}
 public:
@@ -97,7 +97,16 @@ struct Env : std::enable_shared_from_this<Env>{
   void set(const std::string&n,Value v){if(vars.count(n)){vars[n]=std::move(v);return;}if(parent&&parent->has(n)){parent->set(n,std::move(v));return;}throw Error("undefined variable: "+n);}
 };
 
-struct Class { std::string name; std::unordered_map<std::string,std::shared_ptr<Function>> methods; std::shared_ptr<Env> closure; };
+struct Class {
+  std::string name;
+  std::unordered_map<std::string,std::shared_ptr<Function>> methods;
+  std::shared_ptr<Class> parent;
+  std::shared_ptr<Env> closure;
+  std::shared_ptr<Function> findMethod(const std::string& n) const {
+    auto it=methods.find(n); if(it!=methods.end()) return it->second;
+    return parent ? parent->findMethod(n) : nullptr;
+  }
+};
 struct Instance { std::shared_ptr<Class> klass; std::unordered_map<std::string,Value> fields; };
 
 struct Literal:Expr{Value v;explicit Literal(Value x):v(std::move(x)){}Value eval(std::shared_ptr<Env>)override{return v;}};
@@ -118,7 +127,7 @@ struct Function {std::vector<std::string>params;std::vector<std::unique_ptr<Stmt
   if(args.size()!=params.size())throw Error("wrong argument count");auto e=std::make_shared<Env>(closure);if(!std::holds_alternative<std::monostate>(thisValue.v))e->vars["THIS"]=thisValue;for(size_t i=0;i<args.size();i++)e->vars[params[i]]=args[i];
   try{for(auto&s:body)s->exec(e);}catch(ReturnSignal&r){return r.value;}return Value();
 }};
-Value Member::eval(std::shared_ptr<Env>e){auto x=o->eval(e);if(auto ip=std::get_if<std::shared_ptr<Instance>>(&x.v)){auto inst=*ip;if(inst->fields.count(k))return inst->fields.at(k);auto it=inst->klass->methods.find(k);if(it!=inst->klass->methods.end()){auto method=it->second;return std::function<Value(const std::vector<Value>&)>([method,inst](const std::vector<Value>&args){return method->call(args,Value(inst));});}throw Error("unknown instance member: "+k);}auto p=std::get_if<std::shared_ptr<Value::Object>>(&x.v);if(!p)throw Error("member access requires object or instance");return (*p)->count(k)?(*p)->at(k):Value();}
+Value Member::eval(std::shared_ptr<Env>e){auto x=o->eval(e);if(auto ip=std::get_if<std::shared_ptr<Instance>>(&x.v)){auto inst=*ip;if(inst->fields.count(k))return inst->fields.at(k);auto method=inst->klass->findMethod(k);if(method){return std::function<Value(const std::vector<Value>&)>([method,inst](const std::vector<Value>&args){return method->call(args,Value(inst));});}throw Error("unknown instance member: "+k);}auto p=std::get_if<std::shared_ptr<Value::Object>>(&x.v);if(!p)throw Error("member access requires object or instance");return (*p)->count(k)?(*p)->at(k):Value();}
 
 struct Call:Expr{std::unique_ptr<Expr>f;std::vector<std::unique_ptr<Expr>>args;Value eval(std::shared_ptr<Env>e)override{auto v=f->eval(e);auto p=std::get_if<std::shared_ptr<Function>>(&v.v);auto nf=std::get_if<std::function<Value(const std::vector<Value>&)>>(&v.v);
     std::vector<Value>a;for(auto&x:args)a.push_back(x->eval(e));
@@ -177,7 +186,7 @@ struct TargetAssign:Stmt{
 struct FnDecl:Stmt{std::string n;std::vector<std::string>p;std::vector<std::unique_ptr<Stmt>>b; FnDecl(std::string x,std::vector<std::string>q,std::vector<std::unique_ptr<Stmt>>z):n(std::move(x)),p(std::move(q)),b(std::move(z)){}void exec(std::shared_ptr<Env>e)override{auto f=std::make_shared<Function>();f->params=p;f->body=std::move(b);f->closure=e;e->vars[n]=f;}};
 struct MethodDef { std::string n; std::vector<std::string> p; std::vector<std::unique_ptr<Stmt>> b; };
 struct ClassDecl:Stmt{std::string n;std::vector<MethodDef>methods; ClassDecl(std::string x,std::vector<MethodDef>m):n(std::move(x)),methods(std::move(m)){}void exec(std::shared_ptr<Env>e)override{auto c=std::make_shared<Class>();c->name=n;c->closure=e;for(auto&d:methods){auto f=std::make_shared<Function>();f->params=d.p;f->body=std::move(d.b);f->closure=e;c->methods[d.n]=f;}e->vars[n]=c;}};
-struct NewExpr:Expr{std::unique_ptr<Expr>klass;std::vector<std::unique_ptr<Expr>>args;Value eval(std::shared_ptr<Env>e)override{auto cv=klass->eval(e);auto cp=std::get_if<std::shared_ptr<Class>>(&cv.v);if(!cp)throw Error("NEW target is not a class");auto inst=std::make_shared<Instance>();inst->klass=*cp;auto it=(*cp)->methods.find("init");std::vector<Value>a;for(auto&x:args)a.push_back(x->eval(e));if(it!=(*cp)->methods.end())it->second->call(a,Value(inst));else if(!a.empty())throw Error("constructor init not found");return inst;}};
+struct NewExpr:Expr{std::unique_ptr<Expr>klass;std::vector<std::unique_ptr<Expr>>args;Value eval(std::shared_ptr<Env>e)override{auto cv=klass->eval(e);auto cp=std::get_if<std::shared_ptr<Class>>(&cv.v);if(!cp)throw Error("NEW target is not a class");auto inst=std::make_shared<Instance>();inst->klass=*cp;auto it=(*cp)->findMethod("init");std::vector<Value>a;for(auto&x:args)a.push_back(x->eval(e));if(it!=(*cp)->methods.end())it->second->call(a,Value(inst));else if(!a.empty())throw Error("constructor init not found");return inst;}};
 
 class Parser {
  std::vector<Token>t;size_t i=0;
@@ -197,7 +206,7 @@ public:
   if(at("TRY")){take();auto b=block();if(!at("CATCH"))throw Error("TRY requires CATCH");take();auto n=take().text;auto h=block();return std::make_unique<TryCatch>(TryCatch{std::move(b),std::move(h),n});}
   if(at("GLOP"))throw Error("unreachable");
   if(at("WIZARD")){take();auto n=take().text;need("(");std::vector<std::string>p;if(!at(")")){do{p.push_back(take().text);}while(at(",")&&take().text==",");}need(")");auto b=block();return std::make_unique<FnDecl>(FnDecl{n,std::move(p),std::move(b->s)});}
-  if(at("OOPS")){take();auto n=take().text;need("{");std::vector<MethodDef>ms;while(!at("}")){if(!at("WIZARD"))throw Error("OOPS class body accepts WIZARD methods only");take();auto mn=take().text;need("(");std::vector<std::string>p;if(!at(")")){do{p.push_back(take().text);}while(at(",")&&take().text==",");}need(")");auto b=block();ms.push_back(MethodDef{mn,std::move(p),std::move(b->s)});}need("}");return std::make_unique<ClassDecl>(ClassDecl{n,std::move(ms)});}
+  if(at("OOPS")){take();auto n=take().text;std::string parent;if(at("EXTENDS")){take();parent=take().text;}need("{");std::vector<MethodDef>ms;while(!at("}")){if(!at("WIZARD"))throw Error("OOPS class body accepts WIZARD methods only");take();auto mn=take().text;need("(");std::vector<std::string>p;if(!at(")")){do{p.push_back(take().text);}while(at(",")&&take().text==",");}need(")");auto b=block();ms.push_back(MethodDef{mn,std::move(p),std::move(b->s)});}need("}");return std::make_unique<ClassDecl>(ClassDecl{n,parent,std::move(ms)});}
   if(at("SUS")){take();auto t=expr();auto a=block();std::unique_ptr<Block>b;if(at("NAH")){take();b=block();}return std::make_unique<If>(If{std::move(t),std::move(a),std::move(b)});}
   if(at("SPIN")){take();auto t=expr();auto b=block();return std::make_unique<While>(While{std::move(t),std::move(b)});}
   auto v=expr();if(cur().kind==Token::OP&&std::string("= += -= *= /=").find(cur().text)!=std::string::npos){auto op=take().text;auto x=expr();if(at(";"))take();return std::make_unique<TargetAssign>(TargetAssign{std::move(v),op,std::move(x)});}if(at(";"))take();return std::make_unique<ExprStmt>(ExprStmt{std::move(v)});

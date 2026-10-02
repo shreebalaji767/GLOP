@@ -10,6 +10,6 @@ assert.deepEqual(run("YAP ABS(7)"),[7]);
 assert.deepEqual(run("YAP UPPER(«glop»)"),["GLOP"]);
 assert.deepEqual(run("YAP RANGE(2,6)"),[[2,3,4,5]]);
 assert.deepEqual(run("GLOP a=[1] PUSH(a,2) YAP LEN(a) YAP POP(a) YAP LEN(a)"),[2,2,1]);
-assert.deepEqual(run("YAP JOIN(["a","b","c"], "-")"),["a-b-c"]);
+assert.deepEqual(run("YAP JOIN(['a','b','c'], '-')"),["a-b-c"]);
 assert.deepEqual(run("YAP TYPE([1]) YAP TYPE(10) YAP TYPE(BASED)"),["array","number","boolean"]);
 console.log("GLOP STANDARD LIBRARY TESTS PASSED.");

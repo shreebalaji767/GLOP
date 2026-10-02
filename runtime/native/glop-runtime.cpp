@@ -160,7 +160,10 @@ public:
 } // namespace glop
 
 
+static bool gPlainDiagnostics=false;
+
 static std::string chaosDiagnostic(const std::string& message){
+  if(gPlainDiagnostics) return "GLOP ERROR: "+message;
   std::string code="GLOP-E9999",cat="[CHAOS ENGINE]",what="THE BYTECODE MACHINE HAS ENCOUNTERED PREMIUM NONSENSE.",
              why="The runtime hit a condition it cannot safely continue through.",
              fix="Inspect the failing operation and the source that produced this bytecode.";
@@ -174,7 +177,20 @@ static std::string chaosDiagnostic(const std::string& message){
 
 int main(int argc,char**argv){
   try{
-    if(argc!=2){std::cerr<<"usage: glop-runtime <program.gbc>\n";return 2;}
-    auto chunk=glop::load(argv[1]); auto result=glop::VM(chunk).run(); (void)result; return 0;
+    std::vector<std::string> positional;
+    for(int i=1;i<argc;++i){
+      std::string arg=argv[i];
+      if(arg=="--plain"){gPlainDiagnostics=true;continue;}
+      if(arg=="--help"||arg=="-h"){
+        std::cout<<"GLOP 0.7.0 bytecode runtime — CHAOS MODE ENABLED\n";
+        std::cout<<"usage: glop-runtime [--plain] <program.gbc>\n";
+        std::cout<<"diagnostics: chaotic by default; use --plain for machine-friendly output\n";
+        return 0;
+      }
+      if(arg=="--version"||arg=="-v"){std::cout<<"GLOP 0.7.0 bytecode runtime\n";return 0;}
+      positional.push_back(std::move(arg));
+    }
+    if(positional.size()!=1) throw std::runtime_error("usage: glop-runtime [--plain] <program.gbc>");
+    auto chunk=glop::load(positional[0]); auto result=glop::VM(chunk).run(); (void)result; return 0;
   }catch(const std::exception&e){std::cerr<<chaosDiagnostic(e.what())<<"\n";return 1;}
 }

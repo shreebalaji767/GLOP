@@ -20,6 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: cmake -S runtime/native -B build/native
-      - run: cmake --build build/native --config Release\n      - run: ./build/native/glop examples/hello.glop
+      - run: cmake --build build/native --config Release
+      - run: ./build/native/glop examples/hello.glop
       - run: node src/cli.js build examples/hello.glop -o build/hello.gbc
       - run: ./build/native/glop-runtime build/hello.gbc

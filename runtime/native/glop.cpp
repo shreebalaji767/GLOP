@@ -58,9 +58,9 @@ struct Env;
 struct Value {
   using Array=std::vector<Value>;
   using Object=std::unordered_map<std::string,Value>;
-  std::variant<std::monostate,bool,double,std::string,std::shared_ptr<Array>,std::shared_ptr<Object>,std::shared_ptr<Function>> v;
+  std::variant<std::monostate,bool,double,std::string,std::shared_ptr<Array>,std::shared_ptr<Object>,std::shared_ptr<Function>,std::function<Value(const std::vector<Value>&)>> v;
   Value():v(std::monostate{}){} Value(bool x):v(x){} Value(double x):v(x){} Value(std::string x):v(std::move(x)){}
-  Value(const char*x):v(std::string(x)){} Value(std::shared_ptr<Array>x):v(std::move(x)){} Value(std::shared_ptr<Object>x):v(std::move(x)){} Value(std::shared_ptr<Function>x):v(std::move(x)){}
+  Value(const char*x):v(std::string(x)){} Value(std::shared_ptr<Array>x):v(std::move(x)){} Value(std::shared_ptr<Object>x):v(std::move(x)){} Value(std::shared_ptr<Function>x):v(std::move(x)){} Value(std::function<Value(const std::vector<Value>&)>x):v(std::move(x)){}
 };
 struct ReturnSignal { Value value; };
 struct Expr { virtual ~Expr()=default; virtual Value eval(std::shared_ptr<Env>)=0; };
@@ -74,6 +74,7 @@ static std::string show(const Value&v){
   if(auto p=std::get_if<std::string>(&v.v))return *p;
   if(auto p=std::get_if<std::shared_ptr<Value::Array>>(&v.v)){std::string s="[";for(size_t i=0;i<(*p)->size();i++){if(i)s+=", ";s+=show((*p)->at(i));}return s+"]";}
   if(auto p=std::get_if<std::shared_ptr<Value::Object>>(&v.v))return "[object]";
+  if(std::holds_alternative<std::function<Value(const std::vector<Value>&)>>(v.v))return "[native-function]";
   return "[function]";
 }
 static double num(const Value&v){if(auto p=std::get_if<double>(&v.v))return *p;throw Error("expected number");}
@@ -105,7 +106,11 @@ struct Function {std::vector<std::string>params;std::vector<std::unique_ptr<Stmt
   if(args.size()!=params.size())throw Error("wrong argument count");auto e=std::make_shared<Env>(closure);for(size_t i=0;i<args.size();i++)e->vars[params[i]]=args[i];
   try{for(auto&s:body)s->exec(e);}catch(ReturnSignal&r){return r.value;}return Value();
 }};
-struct Call:Expr{std::unique_ptr<Expr>f;std::vector<std::unique_ptr<Expr>>args;Value eval(std::shared_ptr<Env>e)override{auto v=f->eval(e);auto p=std::get_if<std::shared_ptr<Function>>(&v.v);if(!p)throw Error("BONK target is not a function");std::vector<Value>a;for(auto&x:args)a.push_back(x->eval(e));return (*p)->call(a);}};
+struct Call:Expr{std::unique_ptr<Expr>f;std::vector<std::unique_ptr<Expr>>args;Value eval(std::shared_ptr<Env>e)override{auto v=f->eval(e);auto p=std::get_if<std::shared_ptr<Function>>(&v.v);auto nf=std::get_if<std::function<Value(const std::vector<Value>&)>>(&v.v);
+    std::vector<Value>a;for(auto&x:args)a.push_back(x->eval(e));
+    if(nf)return (*nf)(a);
+    if(p)return (*p)->call(a);
+    throw Error("BONK target is not a function");}};
 
 struct Var:Stmt{std::string n;std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{e->vars[n]=v->eval(e);}};
 struct Print:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{std::cout<<show(v->eval(e))<<"\n";}};
@@ -132,7 +137,8 @@ struct TryCatch:Stmt{
     catch(const ContinueSignal&){throw;}
     catch(const Error&x){auto h=std::make_shared<Env>(e);h->vars[name]=Value(std::string(x.what()));handler->exec(h);}
   }
-};\nstruct If:Stmt{std::unique_ptr<Expr>t;std::unique_ptr<Block>a,b;void exec(std::shared_ptr<Env>e)override{if(truth(t->eval(e)))a->exec(e);else if(b)b->exec(e);}};
+};
+struct If:Stmt{std::unique_ptr<Expr>t;std::unique_ptr<Block>a,b;void exec(std::shared_ptr<Env>e)override{if(truth(t->eval(e)))a->exec(e);else if(b)b->exec(e);}};
 struct While:Stmt{std::unique_ptr<Expr>t;std::unique_ptr<Block>b;void exec(std::shared_ptr<Env>e)override{while(truth(t->eval(e))){try{b->exec(e);}catch(BreakSignal&){break;}catch(ContinueSignal&){}}}};
 struct Break:Stmt{void exec(std::shared_ptr<Env>)override{throw BreakSignal{};}};
 struct Continue:Stmt{void exec(std::shared_ptr<Env>)override{throw ContinueSignal{};}};

@@ -6,7 +6,7 @@ export class GlopCell { constructor(value=null){this.value=value} }
 export class GlopFunction { constructor(chunk,freeCells=[],globals=null){this.chunk=chunk;this.freeCells=freeCells;this.globals=globals} }
 
 export class VM {
-  constructor(bytecode,{output=console.log,globals=null,trace=false,traceOutput=console.error}={}){this.bc=bytecode;this.stack=[];this.trace=trace;this.traceOutput=traceOutput;this.globals=globals??new Map(Object.entries(GLOP_STDLIB).map(([name,fn])=>[name,fn]));this.frames=[];this.handlers=[];this.ip=0;this.chunk=bytecode;this.locals=null;this.freeCells=[];this.output=output}
+  constructor(bytecode,{output=console.log,globals=null,trace=false,traceOutput=console.error,breakpoints=[],debugOutput=console.error}={}){this.bc=bytecode;this.stack=[];this.trace=trace;this.traceOutput=traceOutput;this.breakpoints=new Set(breakpoints);this.debugOutput=debugOutput;this.paused=false;this.stepMode=false;this.globals=globals??new Map(Object.entries(GLOP_STDLIB).map(([name,fn])=>[name,fn]));this.frames=[];this.handlers=[];this.ip=0;this.chunk=bytecode;this.locals=null;this.freeCells=[];this.output=output}
   pop(){if(!this.stack.length)throw new GlopRuntimeError("stack underflow");return this.stack.pop()}
   currentConstants(){return this.chunk.constants}
   captureCell(name){if(this.locals&&this.chunk!==this.bc){const i=this.chunk.localNames?.[name];if(i!==undefined)return this.locals[i]}const fi=this.chunk.freeNames?.indexOf(name)??-1;if(fi>=0)return this.freeCells[fi];throw new GlopRuntimeError("cannot capture lexical name: "+name)}
@@ -25,7 +25,7 @@ export class VM {
   run(){
     while(true){
       if(this.ip>=this.chunk.code.length)throw new GlopRuntimeError("instruction pointer escaped bytecode");
-      const offset=this.ip;const ins=this.chunk.code[this.ip++];if(this.trace){const p=ins.loc?` ${ins.loc.line}:${ins.loc.column}`:"";this.traceOutput(`[GLOP TRACE] ${this.chunk.name||"<main>"}${p} @${offset} ${ins.op}${ins.arg===null||ins.arg===undefined?"":" "+ins.arg} | stack=${this.stack.length}`);}
+      const offset=this.ip;const ins=this.chunk.code[this.ip++];const line=ins.loc?.line??0;const column=ins.loc?.column??0;if(this.breakpoints.has(line)||(this.stepMode)){this.debugOutput("[GLOP DEBUG] "+(this.chunk.name||"<main>")+" "+line+":"+column+" @"+offset+" "+ins.op);this.stepMode=false;}if(this.trace){const p=ins.loc?` ${ins.loc.line}:${ins.loc.column}`:"";this.traceOutput(`[GLOP TRACE] ${this.chunk.name||"<main>"}${p} @${offset} ${ins.op}${ins.arg===null||ins.arg===undefined?"":" "+ins.arg} | stack=${this.stack.length}`);}
       switch(ins.op){
         case OP.CONST:this.stack.push(this.currentConstants()[ins.arg]);break;
         case OP.LOAD_GLOBAL:if(!this.globals.has(ins.arg))throw new GlopRuntimeError("undefined variable: "+ins.arg);this.stack.push(this.globals.get(ins.arg));break;
@@ -57,3 +57,5 @@ export class VM {
   }
 }
 export const runBytecode=(bytecode,options)=>new VM(bytecode,options).run();
+
+export const debugBytecode=(bytecode,options={})=>new VM(bytecode,{...options,trace:false}).run();

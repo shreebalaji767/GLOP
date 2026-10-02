@@ -451,33 +451,34 @@ static std::string readFile(const std::string&f){std::ifstream in(f);if(!in)thro
 }
 
 
-static std::string chaosDiagnostic(const std::string& message){
-  if(message.find("unterminated string")!=std::string::npos)
-    return "GLOP-E1001 [SYNTAX GOBLIN] \n  THE QUOTE ESCAPED. THE STRING DID NOT.\n  Technical: "+message;
-  if(message.find("unexpected character")!=std::string::npos)
-    return "GLOP-E1002 [CHARACTER MUTINY] \n  A CHARACTER JUST WALKED INTO THE COMPILER UNINVITED.\n  Technical: "+message;
-  if(message.find("expected ")==0)
-    return "GLOP-E1003 [PARSER PANIC] \n  THE PARSER WANTED ONE THING AND GOT ABSOLUTELY ANOTHER.\n  Technical: "+message;
-  if(message.find("undefined variable")!=std::string::npos)
-    return "GLOP-E2001 [NAME GOBLIN] \n  THAT NAME DOES NOT EXIST IN THIS UNIVERSE.\n  Technical: "+message;
-  if(message.find("wrong argument count")!=std::string::npos)
-    return "GLOP-E2002 [BONK MISFIRE] \n  FUNCTION BONKED. ARGUMENTS DID NOT MATCH.\n  Technical: "+message;
-  if(message.find("division by zero")!=std::string::npos)
-    return "GLOP-E3001 [MATH GREMLIN] \n  ZERO HAS ENTERED THE DENOMINATOR. MATHEMATICS HAS FILED A COMPLAINT.\n  Technical: "+message;
-  if(message.find("array index out of range")!=std::string::npos)
-    return "GLOP-E3002 [INDEX CANNON] \n  YOU FIRED AN INDEX INTO EMPTY SPACE.\n  Technical: "+message;
-  if(message.find("not a class")!=std::string::npos || message.find("unknown instance member")!=std::string::npos)
-    return "GLOP-E4001 [OOPS CLASS DISASTER] \n  THE OBJECT-ORIENTED UNIVERSE HAS REJECTED YOUR REQUEST.\n  Technical: "+message;
-  if(message.find("not a function")!=std::string::npos)
-    return "GLOP-E4002 [BONK TARGET DISASTER] \n  YOU BONKED SOMETHING THAT IS NOT A FUNCTION.\n  IT REMAINS EXTREMELY UNIMPRESSED.\n  Technical: "+message;
-  return "GLOP-E9999 [CHAOS ENGINE] \n  SOMETHING WENT SIDEWAYS WITH GREAT CONFIDENCE.\n  Technical: "+message;
+static std::string chaosDiagnostic(const std::string& message, bool plain=false){
+  if(plain) return "GLOP ERROR: "+message;
+  std::string code="GLOP-E9999",cat="[CHAOS ENGINE]",what="Something went sideways with great confidence.",
+              why="The runtime encountered a condition it could not complete normally.",
+              fix="Read the technical detail, inspect the nearby code, and correct the reported condition.";
+  if(message.find("unterminated string")!=std::string::npos){code="GLOP-E1001";cat="[SYNTAX GOBLIN]";what="THE QUOTE ESCAPED. THE STRING DID NOT.";why="A string started with a quote but no matching closing quote was found.";fix="Close the string with the matching quote. Check the line for an accidental quote or missing delimiter.";}
+  else if(message.find("unexpected character")!=std::string::npos){code="GLOP-E1002";cat="[CHARACTER MUTINY]";what="A CHARACTER JUST WALKED INTO THE COMPILER UNINVITED.";why="The lexer found a character that is not valid GLOP syntax.";fix="Remove it or replace it with valid GLOP punctuation, an operator, a keyword, or a string.";}
+  else if(message.find("expected ")==0){code="GLOP-E1003";cat="[PARSER PANIC]";what="THE PARSER WANTED ONE THING AND GOT ABSOLUTELY ANOTHER.";why="The source structure does not match the grammar GLOP expected at that point.";fix="Inspect the reported location. Check missing braces, parentheses, commas, operators, or keywords.";}
+  else if(message.find("undefined variable")!=std::string::npos){code="GLOP-E2001";cat="[NAME GOBLIN]";what="THAT NAME DOES NOT EXIST IN THIS UNIVERSE.";why="The program tried to read a variable that is not defined in the current scope or its parents.";fix="Declare it with GLOP, check spelling, or verify that you are using the variable inside the correct scope.";}
+  else if(message.find("wrong argument count")!=std::string::npos){code="GLOP-E2002";cat="[BONK MISFIRE]";what="THE FUNCTION WAS BONKED WITH THE WRONG NUMBER OF ARGUMENTS.";why="The number of supplied arguments does not match the WIZARD's parameters.";fix="Count the parameters and arguments. Pass exactly the number the function declares.";}
+  else if(message.find("division by zero")!=std::string::npos){code="GLOP-E3001";cat="[MATH GREMLIN]";what="ZERO HAS ENTERED THE DENOMINATOR. MATHEMATICS HAS FILED A COMPLAINT.";why="The right-hand side of division evaluated to zero.";fix="Check the divisor before dividing. Use SUS to handle the zero case.";}
+  else if(message.find("array index out of range")!=std::string::npos){code="GLOP-E3002";cat="[INDEX CANNON]";what="YOU FIRED AN INDEX INTO EMPTY SPACE.";why="The requested array position is outside the valid range.";fix="Check LEN(array), and remember that array indexes start at 0.";}
+  else if(message.find("expected number")!=std::string::npos){code="GLOP-E3003";cat="[NUMBER GOBLIN]";what="A NUMBER WAS REQUESTED. SOMETHING ELSE ARRIVED WEARING A FAKE MUSTACHE.";why="An arithmetic or numeric operation received a non-number value.";fix="Check TYPE(value) and convert or validate the value before using numeric operators.";}
+  else if(message.find("not a class")!=std::string::npos || message.find("unknown instance member")!=std::string::npos){code="GLOP-E4001";cat="[OOPS CLASS DISASTER]";what="THE OBJECT-ORIENTED UNIVERSE HAS REJECTED YOUR REQUEST.";why="NEW or member access was used with the wrong kind of value or an unknown member.";fix="Check TYPE(value), the OOPS declaration, field names, and WIZARD methods.";}
+  else if(message.find("not a function")!=std::string::npos){code="GLOP-E4002";cat="[BONK TARGET DISASTER]";what="YOU BONKED SOMETHING THAT IS NOT A FUNCTION.";why="The value being called is not a WIZARD/function.";fix="Check TYPE(target), the declaration, and whether the variable was overwritten.";}
+  else if(message.find("invalid assignment")!=std::string::npos){code="GLOP-E2004";cat="[ASSIGNMENT CHAOS]";what="YOU TRIED TO STICK A VALUE SOMEWHERE THAT IS NOT STICKABLE.";why="The left side of the assignment is not a variable, member, or array element.";fix="Assign to a GLOP variable, object member, or valid array index.";}
+  else if(message.find("cannot open")!=std::string::npos){code="GLOP-E5001";cat="[FILE GOBLIN]";what="THE FILE DOOR IS LOCKED AND GLOP DOES NOT HAVE THE KEY.";why="The requested file could not be opened.";fix="Check the path, working directory, permissions, and whether the file exists.";}
+  std::string s=code+" "+cat+"\n\n  WHAT HAPPENED\n  "+what+"\n\n  WHY THIS MAY HAVE HAPPENED\n  "+why+"\n\n  WHAT CAN BE DONE\n  "+fix+"\n\n  TECHNICAL DETAIL\n  "+message+"\n\n  CHAOS REPORT\n  GLOP → PANIC → DIAGNOSE → FIX → BONK AGAIN";
+  return s;
 }
-static void printChaosSuccess(const std::string&what){
-  std::cout<<"[SUCCESS: SOMEHOW] "<<what<<" \n";
+static void printChaosSuccess(const std::string&what, bool plain=false){
+  if(plain) std::cout<<"GLOP OK: "<<what<<"\n";
+  else std::cout<<"[SUCCESS: SOMEHOW]\n  "<<what<<"\n  CHAOS ENGINE: SURVIVED\n";
 }
 
 int main(int argc,char**argv){
   try{
+    bool plain=false; for(int ai=1;ai<argc;++ai) if(std::string(argv[ai])=="--plain") plain=true;
     if(argc<2 || std::string(argv[1])=="--help" || std::string(argv[1])=="-h"){
       std::cout<<"GLOP 0.7.0 native runtime — CHAOS MODE ENABLED\n";
       std::cout<<"usage: glop <program.glop> [args...]\n";
@@ -487,11 +488,7 @@ int main(int argc,char**argv){
       std::cout<<"diagnostics: chaotic by default; use --plain for boring machine-friendly output\n";
       return argc<2 ? 2 : 0;
     }
-    if(std::string(argv[1])=="--plain"){
-      std::cout<<"GLOP 0.7.0 native runtime\n";
-      return 0;
-    }
-    if(std::string(argv[1])=="--version" || std::string(argv[1])=="-v"){std::cout<<"GLOP 0.7.0 native runtime\n";return 0;}
+        if(std::string(argv[1])=="--version" || std::string(argv[1])=="-v"){std::cout<<"GLOP 0.7.0 native runtime\n";return 0;}
     bool checkOnly=std::string(argv[1])=="check";
     const char* sourcePath=checkOnly ? (argc>=3 ? argv[2] : nullptr) : argv[1];
     if(!sourcePath) throw glop::Error("usage: glop check <program.glop>");
@@ -499,7 +496,7 @@ int main(int argc,char**argv){
     glop::gArgs.assign(checkOnly ? argv + 3 : argv + 2, argv + argc);
     auto ast=glop::Parser(glop::Lexer(glop::readFile(sourcePath)).all()).program();
     if(checkOnly){
-      printChaosSuccess("SOURCE CHECKED. NO GOBLINS FOUND.");
+      printChaosSuccess("SOURCE CHECKED. NO GOBLINS FOUND.", plain);
       return 0;
     }
     auto env=std::make_shared<glop::Env>();
@@ -540,7 +537,7 @@ int main(int argc,char**argv){
     env->vars["JOIN"]=glop::Value(glop::nativeJoin);
     for(auto&s:ast)s->exec(env);
     return 0;
-  }catch(const glop::Error&e){std::cerr<<chaosDiagnostic(e.what())<<"\n";return 1;}
+  }catch(const glop::Error&e){std::cerr<<chaosDiagnostic(e.what(), plain)<<"\n";return 1;}
   catch(const glop::ReturnSignal&){std::cerr<<"GLOP-E2003 [YEET CRIME]\\n  YEET ESCAPED A WIZARD. THIS IS NOT A NORMAL EXIT.\\n  Technical: YEET outside WIZARD\\n";return 1;}
-  catch(...){std::cerr<<"GLOP-E0001 [COMPILER PANIC]\\n  THE UNKNOWN VOID HAS LOOKED BACK.\\n  Technical: unknown runtime failure\\n";return 1;}
+  catch(...){std::cerr<<chaosDiagnostic("unknown runtime failure", plain)<<"\n";return 1;}
 }

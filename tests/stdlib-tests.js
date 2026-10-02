@@ -4,8 +4,6 @@ import { parse } from "../src/parser.js";
 import { compileBytecode } from "../src/bytecode-compiler.js";
 import { runBytecode } from "../src/vm.js";
 
-console.log("DEBUG TOKEN",JSON.stringify(lex("YAP LEN([1,2,3]) YAP ABS(-7) YAP UPPER(«glop»)").find(t=>t.column===34)));
-
 const run=source=>{const out=[];runBytecode(compileBytecode(parse(lex(source))),{output:x=>out.push(x)});return out};
 assert.deepEqual(run("YAP LEN([1,2,3]) YAP ABS(-7) YAP UPPER(«glop»)"),[3,7,"GLOP"]);
 assert.deepEqual(run("YAP RANGE(2,6)"),[[2,3,4,5]]);

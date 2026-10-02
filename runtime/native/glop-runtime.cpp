@@ -104,7 +104,16 @@ class VM {
   Value pop(){if(stack.empty())throw std::runtime_error("GLOP stack underflow");auto v=stack.back();stack.pop_back();return v;}
   void push(Value v){stack.push_back(std::move(v));}
   double number(const Value& v){if(auto p=std::get_if<double>(&v))return *p;throw std::runtime_error("expected number");}
-  bool equal(const Value&a,const Value&b){\n    if(a.index()!=b.index()) return false;\n    if(std::holds_alternative<std::monostate>(a)) return true;\n    if(auto p=std::get_if<bool>(&a)) return *p==std::get<bool>(b);\n    if(auto p=std::get_if<double>(&a)) return *p==std::get<double>(b);\n    if(auto p=std::get_if<std::string>(&a)) return *p==std::get<std::string>(b);\n    if(auto p=std::get_if<std::shared_ptr<Function>>(&a)) return *p==std::get<std::shared_ptr<Function>>(b);\n    if(auto p=std::get_if<std::shared_ptr<Array>>(&a)) return *p==std::get<std::shared_ptr<Array>>(b);\n    if(auto p=std::get_if<std::shared_ptr<Object>>(&a)) return *p==std::get<std::shared_ptr<Object>>(b);\n    return false;\n  }
+  bool equal(const Value&a,const Value&b){
+    if(a.index()!=b.index()) return false;
+    if(std::holds_alternative<std::monostate>(a)) return true;
+    if(auto p=std::get_if<bool>(&a)) return *p==std::get<bool>(b);
+    if(auto p=std::get_if<double>(&a)) return *p==std::get<double>(b);
+    if(auto p=std::get_if<std::string>(&a)) return *p==std::get<std::string>(b);
+    if(auto p=std::get_if<std::shared_ptr<Function>>(&a)) return *p==std::get<std::shared_ptr<Function>>(b);
+    if(auto p=std::get_if<std::shared_ptr<Array>>(&a)) return *p==std::get<std::shared_ptr<Array>>(b);
+    if(auto p=std::get_if<std::shared_ptr<Object>>(&a)) return *p==std::get<std::shared_ptr<Object>>(b);
+    return false;\n  }
   Value binary(uint8_t op,Value a,Value b){
     if(op==ADD && std::holds_alternative<std::string>(a) && std::holds_alternative<std::string>(b))return std::get<std::string>(a)+std::get<std::string>(b);
     double x=number(a),y=number(b);

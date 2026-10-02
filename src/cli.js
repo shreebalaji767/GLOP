@@ -19,7 +19,7 @@ if (cmd === "repl") {
   process.exit(0);
 }
 
-const usage = `GLOP 0.12.0
+const usage = `GLOP 0.13.0
 
   glop run <file.glop|file.gbc>
   glop repl
@@ -36,6 +36,9 @@ if (!cmd || !file) {
 
 try {
   if (cmd === "trace") {
+    const source = fs.readFileSync(file, "utf8");
+    const ast = parse(lex(source));
+    analyze(ast);
     const bc = file.toLowerCase().endsWith(".gbc") ? readGBC(file) : compileBytecode(ast);
     runBytecode(bc, { output: console.log, trace: true });
     process.exit(0);

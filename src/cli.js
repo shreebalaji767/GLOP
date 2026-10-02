@@ -7,11 +7,12 @@ import { compile } from "./compiler.js";
 import { compileBytecode } from "./bytecode-compiler.js";
 import { writeGBC } from "./gbc.js";
 import { runBytecode } from "./vm.js";
+import { ModuleLoader } from "./module-loader.js";
 
 const [, , cmd, file, ...rest] = process.argv;
 
 if (!cmd || !file) {
-  console.log("GLOP 0.3.0\n\n glop run <file.glop>\n glop compile <file.glop> [-o out.mjs]\n glop check <file.glop>\n glop build <file.glop> [-o out.gbc]\n glop tokens <file.glop>");
+  console.log("GLOP 0.9.0\n\n glop run <file.glop>\n glop compile <file.glop> [-o out.mjs]\n glop check <file.glop>\n glop build <file.glop> [-o out.gbc]\n glop tokens <file.glop>");
   process.exit(cmd ? 1 : 0);
 }
 
@@ -33,6 +34,7 @@ try {
   }
 
   if (cmd === "build") {
+    if (ast.body.some(s => s.type === "ImportDecl" || s.type === "ExportDecl")) throw new Error("native GBC build does not yet bundle STEAL/FLEX modules; use `glop run` for module programs.");
     const oi = rest.indexOf("-o");
     const out = oi >= 0 ? rest[oi + 1] : file.replace(/\.glop$/, ".gbc");
     writeGBC(compileBytecode(ast), out);

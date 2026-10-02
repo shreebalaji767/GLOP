@@ -273,7 +273,7 @@ struct NewExpr:Expr{std::unique_ptr<Expr>klass;std::vector<std::unique_ptr<Expr>
  std::vector<Token>t;size_t i=0;
  template<class T> std::unique_ptr<T> mark(std::unique_ptr<T> n,const Token& x){n->pos={x.line,x.col};return n;}
  SourcePos here() const {return {cur().line,cur().col};}
- Token&cur(){return t[i];}bool at(const std::string&s){return cur().text==s;}Token take(){return t[i++];}
+ Token&cur(){return t[i];}const Token&cur()const{return t[i];}bool at(const std::string&s){return cur().text==s;}Token take(){return t[i++];}
  void need(const std::string&s){if(!at(s))throw Error("expected "+s,here());take();}
  std::unique_ptr<Block> block(){need("{");auto b=std::make_unique<Block>();while(!at("}")&&cur().kind!=Token::END)b->s.push_back(stmt());need("}");return b;}
 public:

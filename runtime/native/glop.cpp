@@ -69,7 +69,7 @@ public:
       int l=line,cc=col;
       if(std::isalpha((unsigned char)c)||c=='_'){std::string x;while(std::isalnum((unsigned char)peek())||peek()=='_')x+=take();out.push_back({Token::ID,x,0,l,cc});continue;}
       if(std::isdigit((unsigned char)c)){std::string x;while(std::isdigit((unsigned char)peek()))x+=take();if(peek()=='.'){x+=take();while(std::isdigit((unsigned char)peek()))x+=take();}out.push_back({Token::NUM,x,std::stod(x),l,cc});continue;}
-      if(c=='"'||c=='\\''){char q=take();std::string x;while(peek()&&peek()!=q){if(peek()=='\\\\'){take();x+=take();}else x+=take();}if(take()!=q)throw Error("unterminated string",SourcePos{l,cc});out.push_back({Token::STR,x,0,l,cc});continue;}
+      if(c=='"'||c=='\''){char q=take();std::string x;while(peek()&&peek()!=q){if(peek()=='\\'){take();x+=take();}else x+=take();}if(take()!=q)throw Error("unterminated string",SourcePos{l,cc});out.push_back({Token::STR,x,0,l,cc});continue;}
       if(c=='«'){take();std::string x;while(peek()&&peek()!='»')x+=take();if(take()!='»')throw Error("unterminated string",SourcePos{l,cc});out.push_back({Token::STR,x,0,l,cc});continue;}
       std::string two;two+=c;two+=peek(1);
       if(two=="=="||two=="!="||two=="<="||two==">="||two=="&&"||two=="||"||two=="+="||two=="-="||two=="*="||two=="/="){take();take();out.push_back({Token::OP,two,0,l,cc});continue;}

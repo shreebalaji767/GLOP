@@ -51,6 +51,7 @@ class Scope {
 export class SemanticAnalyzer {
   constructor() {
     this.global = new Scope(null, "global");
+    this.functions = new Map();
   }
 
   analyze(program) {

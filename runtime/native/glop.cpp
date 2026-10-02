@@ -204,6 +204,8 @@ public:
  }
 };
 
+static std::string readFile(const std::string&f);
+
 static Value nativeLen(const std::vector<Value>& a){
   if(a.size()!=1) throw Error("LEN expects 1 argument");
   const auto& v=a[0];

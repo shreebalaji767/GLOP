@@ -11,7 +11,7 @@ import { runBytecode } from "./vm.js";
 const [, , cmd, file, ...rest] = process.argv;
 
 if (!cmd || !file) {
-  console.log("GLOP 0.3.0\n\n glop run <file.glop>\n glop compile <file.glop> [-o out.mjs]\n glop check <file.glop>\n glop tokens <file.glop>");
+  console.log("GLOP 0.3.0\n\n glop run <file.glop>\n glop compile <file.glop> [-o out.mjs]\n glop check <file.glop>\n glop build <file.glop> [-o out.gbc]\n glop tokens <file.glop>");
   process.exit(cmd ? 1 : 0);
 }
 
@@ -34,7 +34,7 @@ try {
 
   if (cmd === "build") {
     const oi = rest.indexOf("-o");
-    const out = oi >= 0 ? rest[oi + 1] : file.replace(/\\.glop$/, ".gbc");
+    const out = oi >= 0 ? rest[oi + 1] : file.replace(/\.glop$/, ".gbc");
     writeGBC(compileBytecode(ast), out);
     console.log("GLOP bytecode -> " + out);
     process.exit(0);

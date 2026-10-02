@@ -35,6 +35,12 @@ if (!cmd || !file) {
 }
 
 try {
+  if (cmd === "trace") {
+    const bc = file.toLowerCase().endsWith(".gbc") ? readGBC(file) : compileBytecode(ast);
+    runBytecode(bc, { output: console.log, trace: true });
+    process.exit(0);
+  }
+
   if (cmd === "run" && file.toLowerCase().endsWith(".gbc")) {
     runBytecode(readGBC(file), { output: console.log });
     process.exit(0);

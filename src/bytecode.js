@@ -14,9 +14,9 @@ export const OP={
 };
 
 export class BytecodeBuilder{
- constructor(){this.code=[];this.constants=[];this.functions=[]}
+ constructor(){this.code=[];this.constants=[];this.functions=[];this.location=null}
  constant(v){const i=this.constants.findIndex(x=>Object.is(x,v));if(i>=0)return i;this.constants.push(v);return this.constants.length-1}
- emit(op,arg=null){const i=this.code.length;this.code.push({op,arg});return i}
+ emit(op,arg=null){const i=this.code.length;this.code.push({op,arg,loc:this.location});return i}
  patch(i,arg){this.code[i].arg=arg}
  addFunction(fn){const i=this.functions.length;this.functions.push(fn);return i}
 }

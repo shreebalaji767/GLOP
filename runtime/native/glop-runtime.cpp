@@ -161,28 +161,15 @@ public:
 
 
 static std::string chaosDiagnostic(const std::string& message){
-  if(message.find("unterminated string")!=std::string::npos)
-    return "GLOP-E1001 [SYNTAX GOBLIN] \n  THE QUOTE ESCAPED. THE STRING DID NOT.\n  Technical: "+message;
-  if(message.find("unexpected character")!=std::string::npos)
-    return "GLOP-E1002 [CHARACTER MUTINY] \n  A CHARACTER JUST WALKED INTO THE COMPILER UNINVITED.\n  Technical: "+message;
-  if(message.find("expected ")==0)
-    return "GLOP-E1003 [PARSER PANIC] \n  THE PARSER WANTED ONE THING AND GOT ABSOLUTELY ANOTHER.\n  Technical: "+message;
-  if(message.find("undefined variable")!=std::string::npos)
-    return "GLOP-E2001 [NAME GOBLIN] \n  THAT NAME DOES NOT EXIST IN THIS UNIVERSE.\n  Technical: "+message;
-  if(message.find("wrong argument count")!=std::string::npos)
-    return "GLOP-E2002 [BONK MISFIRE] \n  FUNCTION BONKED. ARGUMENTS DID NOT MATCH.\n  Technical: "+message;
-  if(message.find("division by zero")!=std::string::npos)
-    return "GLOP-E3001 [MATH GREMLIN] \n  ZERO HAS ENTERED THE DENOMINATOR. MATHEMATICS HAS FILED A COMPLAINT.\n  Technical: "+message;
-  if(message.find("array index out of range")!=std::string::npos)
-    return "GLOP-E3002 [INDEX CANNON] \n  YOU FIRED AN INDEX INTO EMPTY SPACE.\n  Technical: "+message;
-  if(message.find("not a class")!=std::string::npos || message.find("unknown instance member")!=std::string::npos)
-    return "GLOP-E4001 [OOPS CLASS DISASTER] \n  THE OBJECT-ORIENTED UNIVERSE HAS REJECTED YOUR REQUEST.\n  Technical: "+message;
-  if(message.find("not a function")!=std::string::npos)
-    return "GLOP-E4002 [BONK TARGET DISASTER] \n  YOU BONKED SOMETHING THAT IS NOT A FUNCTION.\n  IT REMAINS EXTREMELY UNIMPRESSED.\n  Technical: "+message;
-  return "GLOP-E9999 [CHAOS ENGINE] \n  SOMETHING WENT SIDEWAYS WITH GREAT CONFIDENCE.\n  Technical: "+message;
-}
-static void printChaosSuccess(const std::string&what){
-  std::cout<<"[SUCCESS: SOMEHOW] "<<what<<" \n";
+  std::string code="GLOP-E9999",cat="[CHAOS ENGINE]",what="THE BYTECODE MACHINE HAS ENCOUNTERED PREMIUM NONSENSE.",
+             why="The runtime hit a condition it cannot safely continue through.",
+             fix="Inspect the failing operation and the source that produced this bytecode.";
+  if(message.find("stack underflow")!=std::string::npos){code="GLOP-E6001";cat="[STACK GOBLIN]";what="THE STACK IS EMPTY. SOMETHING TRIED TO GRAB A VALUE FROM THE VOID.";why="The bytecode expected a value that was never pushed or was already consumed.";fix="Check compiler stack discipline and the instruction sequence around the failing operation.";}
+  else if(message.find("undefined variable")!=std::string::npos){code="GLOP-E2001";cat="[NAME GOBLIN]";what="THE BYTECODE ASKED FOR A NAME THAT DOES NOT EXIST.";why="No global/local binding was available for the requested name.";fix="Declare the value, check scope, and rebuild the bytecode.";}
+  else if(message.find("expected ")!=std::string::npos && message.find("argument")!=std::string::npos){code="GLOP-E2002";cat="[BONK MISFIRE]";what="THE WIZARD RECEIVED THE WRONG NUMBER OF OFFERINGS.";why="Call arguments do not match the function arity stored in bytecode.";fix="Pass exactly the declared number of arguments and rebuild.";}
+  else if(message.find("division by zero")!=std::string::npos){code="GLOP-E3001";cat="[MATH GREMLIN]";what="ZERO HAS ENTERED THE DENOMINATOR.";why="The divisor evaluated to zero at runtime.";fix="Guard the divisor with SUS before division.";}
+  else if(message.find("array index out of range")!=std::string::npos){code="GLOP-E3002";cat="[INDEX CANNON]";what="THE INDEX WAS FIRED PAST THE END OF THE ARRAY.";why="The requested position is outside the array.";fix="Check LEN(array) and use a valid zero-based index.";}
+  return code+" "+cat+"\n\n  WHAT HAPPENED\n  "+what+"\n\n  WHY THIS MAY HAVE HAPPENED\n  "+why+"\n\n  WHAT CAN BE DONE\n  "+fix+"\n\n  TECHNICAL DETAIL\n  "+message+"\n\n  CHAOS REPORT\n  BYTECODE → STACK → PANIC → DIAGNOSE → SURVIVE";
 }
 
 int main(int argc,char**argv){

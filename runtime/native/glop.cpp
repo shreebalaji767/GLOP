@@ -571,6 +571,16 @@ static std::string readFile(const std::string&f){std::ifstream in(f);if(!in)thro
 }
 
 
+static bool gPlainDiagnostics=false;
+static std::string gSourcePath;
+static std::string gSourceText;
+
+static std::string chaosDiagnostic(const std::string&message,bool plain=false,const glop::SourcePos*pos=nullptr){
+  std::string where=pos?(" at "+pos->describe()):"";
+  if(plain)return "GLOP ERROR"+where+": "+message;
+  return "GLOP-E9999 [CHAOS ENGINE]\\n\\n  WHAT HAPPENED\\n  "+message+"\\n\\n  TECHNICAL DETAIL\\n  "+message+"\\n\\n  CHAOS REPORT\\n  GLOP → PANIC → DIAGNOSE → FIX → BONK AGAIN";
+}
+
 static void printChaosSuccess(const std::string&what, bool plain=false){
   if(plain) std::cout<<"GLOP OK: "<<what<<"\n";
   else std::cout<<"[SUCCESS: SOMEHOW]\n  "<<what<<"\n  CHAOS ENGINE: SURVIVED\n";

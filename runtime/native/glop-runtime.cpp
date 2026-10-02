@@ -22,7 +22,8 @@ using Value = std::variant<std::monostate, bool, double, std::string,
                            std::shared_ptr<Function>, std::shared_ptr<Array>,
                            std::shared_ptr<Object>>;
 
-struct Instruction { uint8_t op; int32_t arg; uint8_t argType; std::string text; };
+struct SourceLoc { uint32_t line{}; uint32_t column{}; bool valid{false}; };
+struct Instruction { uint8_t op; int32_t arg; uint8_t argType; std::string text; SourceLoc loc; };
 struct Chunk { uint32_t arity{}; std::string name; std::vector<std::string> freeNames; std::unordered_map<std::string,uint32_t> localNames; std::vector<Value> constants; std::vector<std::shared_ptr<Chunk>> functions; std::vector<Instruction> code; };
 struct Cell { Value value; };
 struct Function { std::shared_ptr<Chunk> chunk; std::vector<std::shared_ptr<Cell>> freeCells; };
@@ -46,28 +47,29 @@ static Value readValue(std::istream& in){
   }
 }
 
-static Instruction readInstruction(std::istream& in){
+static Instruction readInstruction(std::istream& in,bool withLocations){
   Instruction x; x.op=readU8(in); x.argType=readU8(in);
   if(x.argType==0)x.arg=0;
   else if(x.argType==1)x.arg=readI32(in);
   else if(x.argType==2)x.text=readString(in);
   else throw std::runtime_error("bad instruction argument type");
+  if(withLocations){x.loc.valid=readU8(in)!=0;if(x.loc.valid){x.loc.line=readU32(in);x.loc.column=readU32(in);}}
   return x;
 }
 
-static std::shared_ptr<Chunk> readChunk(std::istream& in){
+static std::shared_ptr<Chunk> readChunk(std::istream& in,bool withLocations){
   auto c=std::make_shared<Chunk>(); c->arity=readU32(in); c->name=readString(in); auto nfrees=readU32(in); for(uint32_t i=0;i<nfrees;i++)c->freeNames.push_back(readString(in)); auto nlocals=readU32(in); for(uint32_t i=0;i<nlocals;i++){auto idx=readU32(in);c->localNames[readString(in)]=idx;}
   auto nc=readU32(in); for(uint32_t i=0;i<nc;i++)c->constants.push_back(readValue(in));
-  auto nf=readU32(in); for(uint32_t i=0;i<nf;i++)c->functions.push_back(readChunk(in));
-  auto ni=readU32(in); for(uint32_t i=0;i<ni;i++)c->code.push_back(readInstruction(in));
+  auto nf=readU32(in); for(uint32_t i=0;i<nf;i++)c->functions.push_back(readChunk(in,withLocations));
+  auto ni=readU32(in); for(uint32_t i=0;i<ni;i++)c->code.push_back(readInstruction(in,withLocations));
   return c;
 }
 
 static std::shared_ptr<Chunk> load(const std::string& file){
   std::ifstream in(file,std::ios::binary); if(!in)throw std::runtime_error("cannot open "+file);
-  char magic[4];in.read(magic,4);if(std::memcmp(magic,"GBC2",4)!=0)throw std::runtime_error("not a GLOP bytecode file");
-  if(readU8(in)!=2)throw std::runtime_error("unsupported GBC version");
-  return readChunk(in);
+  char magic[4];in.read(magic,4);const bool v2=std::memcmp(magic,"GBC2",4)==0;const bool v3=std::memcmp(magic,"GBC3",4)==0;if(!v2&&!v3)throw std::runtime_error("not a GLOP bytecode file");
+  const auto version=readU8(in);if((v2&&version!=2)||(v3&&version!=3))throw std::runtime_error("unsupported GBC version");
+  return readChunk(in,v3);
 }
 
 static bool truthy(const Value& v){
@@ -215,12 +217,12 @@ int main(int argc,char**argv){
       std::string arg=argv[i];
       if(arg=="--plain"){gPlainDiagnostics=true;continue;}
       if(arg=="--help"||arg=="-h"){
-        std::cout<<"GLOP 0.9.0 bytecode runtime — CHAOS MODE ENABLED\n";
+        std::cout<<"GLOP 0.13.0 bytecode runtime — CHAOS MODE ENABLED\n";
         std::cout<<"usage: glop-runtime [--plain] <program.gbc>\n";
         std::cout<<"diagnostics: chaotic by default; use --plain for machine-friendly output\n";
         return 0;
       }
-      if(arg=="--version"||arg=="-v"){std::cout<<"GLOP 0.9.0 bytecode runtime\n";return 0;}
+      if(arg=="--version"||arg=="-v"){std::cout<<"GLOP 0.13.0 bytecode runtime\n";return 0;}
       positional.push_back(std::move(arg));
     }
     if(positional.size()!=1) throw std::runtime_error("usage: glop-runtime [--plain] <program.gbc>");

@@ -6,7 +6,7 @@ Long-term pipeline:
 
 Source -> Lexer -> Parser -> AST -> Semantic analysis -> IR -> Bytecode -> GLOP VM -> Standard library
 
-The JavaScript backend is a bootstrap backend. The long-term runtime is a GLOP-owned bytecode virtual machine.
+The JavaScript backend is a bootstrap backend. The long-term runtime is a GLOP-owned bytecode virtual machine. GLOP 0.3 adds the first native runtime foundation: a C++17 VM executable that can load the portable GBC1 bytecode format. Node.js remains the bootstrap compiler during this transition; it is not the target execution dependency.
 
 Compiler layers:
 - Lexer: tokens with source locations.
@@ -19,7 +19,7 @@ GLOP 1.0 targets general-purpose programming: functions, data structures, module
 
 A feature is not considered finished merely because the parser accepts its keyword.
 
-## VM control flow and functions (0.2.x)
+## Native runtime (0.3.x)\n\nThe repository now contains `runtime/native/glop-runtime.cpp`, a C++17 GLOP VM foundation, plus `runtime/native/CMakeLists.txt`. The JavaScript bytecode compiler can emit the portable `.gbc` format with `glop build`.\n\nCurrent native runtime coverage: constants, globals, locals, function calls/returns, arithmetic, comparisons, jumps, logical short-circuit opcodes, printing and arrays. Closures/upvalues, objects, exceptions and the full standard library are intentionally the next native-runtime milestones.\n\nExample workflow:\n\n```text\nGLOP source -> Node bootstrap compiler -> .gbc -> glop-runtime -> OS\n```\n\nThe end goal is to make the compiler and runtime fully native so ordinary GLOP users do not need Node.js.\n\n## VM control flow and functions (0.2.x)
 
 The bytecode VM now has real function call frames and structured loop control.
 

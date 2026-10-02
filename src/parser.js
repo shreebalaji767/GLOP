@@ -42,6 +42,7 @@ export class Parser{
  postfix(e){for(;;){if(this.match("(")){const args=[];if(!this.check(")")){do args.push(this.expression());while(this.match(","))}this.expect(")");e=node("Call",{callee:e,args});continue}if(this.match("[")){const index=this.expression();this.expect("]");e=node("Index",{object:e,index});continue}if(this.match(".")){e=node("Member",{object:e,property:this.expect("identifier").value});continue}break}return e}
  primary(){
   const t=this.peek();
+  if(t?.line===1&&t?.column===34)console.log("PRIMARY34",JSON.stringify(t),t?.type==="identifier",/^[A-Z_][A-Z0-9_]*$/.test(String(t?.value)));
   if(this.match("number")||this.match("string"))return node("Literal",{value:t.value});
   if(this.match("BASED"))return node("Literal",{value:true});if(this.match("CAP"))return node("Literal",{value:false});if(this.match("VOID"))return node("Literal",{value:null});
   if(this.match("BONK")){let callee=this.primary();for(;;){if(this.match(".")){callee=node("Member",{object:callee,property:this.expect("identifier").value});continue}if(this.match("[")){const index=this.expression();this.expect("]");callee=node("Index",{object:callee,index});continue}break}this.expect("(");const args=[];if(!this.check(")")){do args.push(this.expression());while(this.match(","))}this.expect(")");return node("Call",{callee,args})}

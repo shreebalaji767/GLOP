@@ -437,14 +437,28 @@ static std::string readFile(const std::string&f){std::ifstream in(f);if(!in)thro
 
 int main(int argc,char**argv){
   try{
-    if(argc<2){
-      std::cerr<<"GLOP 0.7.0 native runtime\n";
-      std::cerr<<"usage: glop <program.glop> [args...]\n";
-      std::cerr<<"built-ins: LEN PUSH POP TYPE ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS HAS KEYS RANGE NUMBER ARGS TIME_MS SLEEP_MS ENV CWD JOIN_PATH MIN MAX POW CLAMP ASSERT REPEAT TRIM REPLACE SPLIT JOIN\n";
-      return 2;
+    if(argc<2 || std::string(argv[1])=="--help" || std::string(argv[1])=="-h"){
+      std::cout<<"GLOP 0.7.0 native runtime\n";
+      std::cout<<"usage: glop <program.glop> [args...]\n";
+      std::cout<<"       glop check <program.glop>\n";
+      std::cout<<"       glop --version\n";
+      std::cout<<"built-ins: LEN PUSH POP TYPE ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS HAS KEYS RANGE NUMBER ARGS TIME_MS SLEEP_MS ENV CWD JOIN_PATH MIN MAX POW CLAMP ASSERT REPEAT TRIM REPLACE SPLIT JOIN\n";
+      return argc<2 ? 2 : 0;
     }
-    glop::gArgs.assign(argv + 2, argv + argc);
-    auto ast=glop::Parser(glop::Lexer(glop::readFile(argv[1])).all()).program();
+    if(std::string(argv[1])=="--version" || std::string(argv[1])=="-v"){
+      std::cout<<"GLOP 0.7.0 native runtime\n";
+      return 0;
+    }
+    bool checkOnly=std::string(argv[1])=="check";
+    const char* sourcePath=checkOnly ? (argc>=3 ? argv[2] : nullptr) : argv[1];
+    if(!sourcePath) throw glop::Error("usage: glop check <program.glop>");
+    if(checkOnly && argc!=3) throw glop::Error("usage: glop check <program.glop>");
+    glop::gArgs.assign(checkOnly ? argv + 3 : argv + 2, argv + argc);
+    auto ast=glop::Parser(glop::Lexer(glop::readFile(sourcePath)).all()).program();
+    if(checkOnly){
+      std::cout<<"GLOP OK: "<<sourcePath<<"\n";
+      return 0;
+    }
     auto env=std::make_shared<glop::Env>();
     env->vars["LEN"]=glop::Value(glop::nativeLen);
     env->vars["PUSH"]=glop::Value(glop::nativePush);

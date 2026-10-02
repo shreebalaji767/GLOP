@@ -103,8 +103,8 @@ struct Literal:Expr{Value v;explicit Literal(Value x):v(std::move(x)){}Value eva
 struct Name:Expr{std::string n;explicit Name(std::string x):n(std::move(x)){}Value eval(std::shared_ptr<Env>e)override{return e->get(n);}};
 struct ArrayExpr:Expr{std::vector<std::unique_ptr<Expr>> a;Value eval(std::shared_ptr<Env>e)override{auto x=std::make_shared<Value::Array>();for(auto&z:a)x->push_back(z->eval(e));return x;}};
 struct ObjectExpr:Expr{std::vector<std::pair<std::string,std::unique_ptr<Expr>>> p;Value eval(std::shared_ptr<Env>e)override{auto x=std::make_shared<Value::Object>();for(auto&z:p)(*x)[z.first]=z.second->eval(e);return x;}};
-struct Unary:Expr{std::string op;std::unique_ptr<Expr>a;Value eval(std::shared_ptr<Env>e)override{auto x=a->eval(e);if(op=="!")return !truth(x);return -num(x);}};
-struct Binary:Expr{std::string op;std::unique_ptr<Expr>a,b;Value eval(std::shared_ptr<Env>e)override{
+struct Unary:Expr{std::string op;std::unique_ptr<Expr>a; Unary(std::string o,std::unique_ptr<Expr>x):op(std::move(o)),a(std::move(x)){}Value eval(std::shared_ptr<Env>e)override{auto x=a->eval(e);if(op=="!")return !truth(x);return -num(x);}};
+struct Binary:Expr{std::string op;std::unique_ptr<Expr>a,b; Binary(std::string o,std::unique_ptr<Expr>x,std::unique_ptr<Expr>y):op(std::move(o)),a(std::move(x)),b(std::move(y)){}Value eval(std::shared_ptr<Env>e)override{
   auto x=a->eval(e);if(op=="&&")return truth(x)?truth(b->eval(e)):false;if(op=="||")return truth(x)?true:truth(b->eval(e));auto y=b->eval(e);
   if(op=="+"){if(std::holds_alternative<std::string>(x.v)&&std::holds_alternative<std::string>(y.v))return std::get<std::string>(x.v)+std::get<std::string>(y.v);return num(x)+num(y);}
   if(op=="-")return num(x)-num(y);if(op=="*")return num(x)*num(y);if(op=="/"){auto d=num(y);if(d==0)throw Error("division by zero");return num(x)/d;}if(op=="%")return std::fmod(num(x),num(y));
@@ -125,11 +125,11 @@ struct Call:Expr{std::unique_ptr<Expr>f;std::vector<std::unique_ptr<Expr>>args;V
     if(p)return (*p)->call(a);
     throw Error("BONK target is not a function");}};
 
-struct Var:Stmt{std::string n;std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{e->vars[n]=v->eval(e);}};
-struct Print:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{std::cout<<show(v->eval(e))<<"\n";}};
+struct Var:Stmt{std::string n;std::unique_ptr<Expr>v; Var(std::string x,std::unique_ptr<Expr>y):n(std::move(x)),v(std::move(y)){}void exec(std::shared_ptr<Env>e)override{e->vars[n]=v->eval(e);}};
+struct Print:Stmt{std::unique_ptr<Expr>v; explicit Print(std::unique_ptr<Expr>x):v(std::move(x)){}void exec(std::shared_ptr<Env>e)override{std::cout<<show(v->eval(e))<<"\n";}};
 struct ExprStmt:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{v->eval(e);}};
-struct Return:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{throw ReturnSignal{v->eval(e)};}};
-struct Throw:Stmt{std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{throw Error(show(v->eval(e)));}};
+struct Return:Stmt{std::unique_ptr<Expr>x; explicit Return(std::unique_ptr<Expr>y):v(std::move(y)){}void exec(std::shared_ptr<Env>e)override{throw ReturnSignal{v->eval(e)};}};
+struct Throw:Stmt{std::unique_ptr<Expr>x; explicit Throw(std::unique_ptr<Expr>y):v(std::move(y)){}void exec(std::shared_ptr<Env>e)override{throw Error(show(v->eval(e)));}};
 
 static Value applyAssign(const std::string&op,const Value&old,const Value&rhs){
   if(op=="=")return rhs;
@@ -142,7 +142,7 @@ static Value applyAssign(const std::string&op,const Value&old,const Value&rhs){
 struct Assign:Stmt{std::string n,op;std::unique_ptr<Expr>v;void exec(std::shared_ptr<Env>e)override{e->set(n,applyAssign(op,e->get(n),v->eval(e)));}};
 struct Block:Stmt{std::vector<std::unique_ptr<Stmt>>s;void exec(std::shared_ptr<Env>e)override{auto x=std::make_shared<Env>(e);for(auto&z:s)z->exec(x);}};
 struct TryCatch:Stmt{
-  std::unique_ptr<Block>body,handler; std::string name;
+  std::unique_ptr<Block>body,handler; std::string name; TryCatch(std::unique_ptr<Block>b,std::unique_ptr<Block>h,std::string n):body(std::move(b)),handler(std::move(h)),name(std::move(n)){}
   void exec(std::shared_ptr<Env>e)override{
     try{body->exec(e);}
     catch(const ReturnSignal&){throw;}
@@ -151,12 +151,12 @@ struct TryCatch:Stmt{
     catch(const Error&x){auto h=std::make_shared<Env>(e);h->vars[name]=Value(std::string(x.what()));handler->exec(h);}
   }
 };
-struct If:Stmt{std::unique_ptr<Expr>t;std::unique_ptr<Block>a,b;void exec(std::shared_ptr<Env>e)override{if(truth(t->eval(e)))a->exec(e);else if(b)b->exec(e);}};
-struct While:Stmt{std::unique_ptr<Expr>t;std::unique_ptr<Block>b;void exec(std::shared_ptr<Env>e)override{while(truth(t->eval(e))){try{b->exec(e);}catch(BreakSignal&){break;}catch(ContinueSignal&){}}}};
+struct If:Stmt{std::unique_ptr<Expr>t;std::unique_ptr<Block>a,b; If(std::unique_ptr<Expr>x,std::unique_ptr<Block>y,std::unique_ptr<Block>z):t(std::move(x)),a(std::move(y)),b(std::move(z)){}void exec(std::shared_ptr<Env>e)override{if(truth(t->eval(e)))a->exec(e);else if(b)b->exec(e);}};
+struct While:Stmt{std::unique_ptr<Expr>t;std::unique_ptr<Block>b; While(std::unique_ptr<Expr>x,std::unique_ptr<Block>y):t(std::move(x)),b(std::move(y)){}void exec(std::shared_ptr<Env>e)override{while(truth(t->eval(e))){try{b->exec(e);}catch(BreakSignal&){break;}catch(ContinueSignal&){}}}};
 struct Break:Stmt{void exec(std::shared_ptr<Env>)override{throw BreakSignal{};}};
 struct Continue:Stmt{void exec(std::shared_ptr<Env>)override{throw ContinueSignal{};}};
 struct TargetAssign:Stmt{
-  std::unique_ptr<Expr>target; std::string op; std::unique_ptr<Expr>value;
+  std::unique_ptr<Expr>target; std::string op; std::unique_ptr<Expr>value; TargetAssign(std::unique_ptr<Expr>t,std::string o,std::unique_ptr<Expr>v):target(std::move(t)),op(std::move(o)),value(std::move(v)){}
   void exec(std::shared_ptr<Env>e)override{
     auto rhs=value->eval(e);
     if(auto n=dynamic_cast<Name*>(target.get())){e->set(n->n,applyAssign(op,e->get(n->n),rhs));return;}
@@ -173,9 +173,9 @@ struct TargetAssign:Stmt{
     throw Error("invalid assignment target");
   }
 };
-struct FnDecl:Stmt{std::string n;std::vector<std::string>p;std::vector<std::unique_ptr<Stmt>>b;void exec(std::shared_ptr<Env>e)override{auto f=std::make_shared<Function>();f->params=p;f->body=std::move(b);f->closure=e;e->vars[n]=f;}};
+struct FnDecl:Stmt{std::string n;std::vector<std::string>p;std::vector<std::unique_ptr<Stmt>>b; FnDecl(std::string x,std::vector<std::string>q,std::vector<std::unique_ptr<Stmt>>z):n(std::move(x)),p(std::move(q)),b(std::move(z)){}void exec(std::shared_ptr<Env>e)override{auto f=std::make_shared<Function>();f->params=p;f->body=std::move(b);f->closure=e;e->vars[n]=f;}};
 struct MethodDef { std::string n; std::vector<std::string> p; std::vector<std::unique_ptr<Stmt>> b; };
-struct ClassDecl:Stmt{std::string n;std::vector<MethodDef>methods;void exec(std::shared_ptr<Env>e)override{auto c=std::make_shared<Class>();c->name=n;c->closure=e;for(auto&d:methods){auto f=std::make_shared<Function>();f->params=d.p;f->body=std::move(d.b);f->closure=e;c->methods[d.n]=f;}e->vars[n]=c;}};
+struct ClassDecl:Stmt{std::string n;std::vector<MethodDef>methods; ClassDecl(std::string x,std::vector<MethodDef>m):n(std::move(x)),methods(std::move(m)){}void exec(std::shared_ptr<Env>e)override{auto c=std::make_shared<Class>();c->name=n;c->closure=e;for(auto&d:methods){auto f=std::make_shared<Function>();f->params=d.p;f->body=std::move(d.b);f->closure=e;c->methods[d.n]=f;}e->vars[n]=c;}};
 struct NewExpr:Expr{std::unique_ptr<Expr>klass;std::vector<std::unique_ptr<Expr>>args;Value eval(std::shared_ptr<Env>e)override{auto cv=klass->eval(e);auto cp=std::get_if<std::shared_ptr<Class>>(&cv.v);if(!cp)throw Error("NEW target is not a class");auto inst=std::make_shared<Instance>();inst->klass=*cp;auto it=(*cp)->methods.find("init");std::vector<Value>a;for(auto&x:args)a.push_back(x->eval(e));if(it!=(*cp)->methods.end())it->second->call(a,Value(inst));else if(!a.empty())throw Error("constructor init not found");return inst;}};
 
 class Parser {

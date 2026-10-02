@@ -13,6 +13,10 @@ OOPS Person {
     }
 }
 OOPS Employee EXTENDS Person {
+    WIZARD init(name, age, role) {
+        SUPER.init(name, age)
+        THIS.role = role
+    }
     WIZARD greet() {
         YEET SUPER.greet() + " — EMPLOYEE"
     }
@@ -23,9 +27,10 @@ OOPS Employee EXTENDS Person {
 GLOP person = NEW Person("RAVI", 25)
 YAP person.greet()
 YAP person.birthday()
-GLOP worker = NEW Employee("AMAN", 30)
+GLOP worker = NEW Employee("AMAN", 30, "ENGINEER")
 YAP worker.greet()
 YAP worker.role()
+YAP worker.age
 YAP INSTANCEOF(worker, Employee)
 YAP INSTANCEOF(worker, Person)
 YAP TYPE(worker)

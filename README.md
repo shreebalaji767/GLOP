@@ -4,7 +4,9 @@ GLOP is a real programming language with ridiculous keywords and a serious compi
 
 ## Pipeline
 
-GLOP source -> Lexer -> Parser -> AST -> Semantic analysis -> Bytecode -> GLOP VM\n\nThe current bootstrap compiler is JavaScript/Node.js. GLOP also includes a native C++17 runtime that executes portable `.gbc` bytecode without Node.js. The GBC2 format now carries lexical-scope metadata needed for native closures.
+GLOP source -> Lexer -> Parser -> AST -> Semantic analysis -> Bytecode -> GLOP VM
+
+The current bootstrap compiler is JavaScript/Node.js. GLOP also includes a native C++17 runtime that executes portable `.gbc` bytecode without Node.js. The GBC3 is the current portable bytecode format and carries source locations; the reader remains backward-compatible with GBC2.
 
 ## Example
 
@@ -27,10 +29,14 @@ TRY/CATCH=errors, NOPE=break, ZOOM=continue, STEAL=import, FLEX=export.
 \`\`\`bash
 npm test
 node src/cli.js run examples/hello.glop
-node src/cli.js compile examples/hello.glop\nnode src/cli.js build examples/hello.glop\n\n# Native runtime (after building runtime/native)\n./glop-runtime examples/hello.gbc
+node src/cli.js compile examples/hello.glop
+node src/cli.js build examples/hello.glop
+
+# Native runtime (after building runtime/native)
+./glop-runtime examples/hello.gbc
 \`\`\`
 
-GLOP 0.13 adds source-aware bytecode inspection and VM tracing and a JavaScript-side standard library aligned with the native runtime. The project now includes modules, closures, classes, exceptions, a persistent REPL, GBC3 bytecode with GBC2 compatibility, a disassembler, source-aware VM tracing, and native runtime tooling.
+GLOP 0.13 adds source-aware bytecode inspection, VM tracing, bytecode verification, and a JavaScript-side standard library aligned with the native runtime. The project includes modules, closures, exceptions, a persistent REPL, GBC3 bytecode with GBC2 compatibility, a disassembler, source locations, and native runtime tooling. Class syntax and a full interactive debugger remain planned milestones.
 
 
 ## Dependency-free native GLOP

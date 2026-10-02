@@ -214,12 +214,12 @@ int main(int argc,char**argv){
       std::string arg=argv[i];
       if(arg=="--plain"){gPlainDiagnostics=true;continue;}
       if(arg=="--help"||arg=="-h"){
-        std::cout<<"GLOP 0.7.0 bytecode runtime — CHAOS MODE ENABLED\n";
+        std::cout<<"GLOP 0.9.0 bytecode runtime — CHAOS MODE ENABLED\n";
         std::cout<<"usage: glop-runtime [--plain] <program.gbc>\n";
         std::cout<<"diagnostics: chaotic by default; use --plain for machine-friendly output\n";
         return 0;
       }
-      if(arg=="--version"||arg=="-v"){std::cout<<"GLOP 0.7.0 bytecode runtime\n";return 0;}
+      if(arg=="--version"||arg=="-v"){std::cout<<"GLOP 0.9.0 bytecode runtime\n";return 0;}
       positional.push_back(std::move(arg));
     }
     if(positional.size()!=1) throw std::runtime_error("usage: glop-runtime [--plain] <program.gbc>");

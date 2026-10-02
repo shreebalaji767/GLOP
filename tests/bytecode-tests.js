@@ -1,11 +1,42 @@
 import assert from "node:assert/strict";
-import {lex} from "../src/lexer.js";
-import {parse} from "../src/parser.js";
-import {compileBytecode} from "../src/bytecode-compiler.js";
-import {runBytecode} from "../src/vm.js";
+import { lex } from "../src/lexer.js";
+import { parse } from "../src/parser.js";
+import { compileBytecode } from "../src/bytecode-compiler.js";
+import { runBytecode } from "../src/vm.js";
 
-const out=[];
-const bc=compileBytecode(parse(lex("GLOP x=10\nGLOP y=20\nYAP x+y")));
-runBytecode(bc,{output:v=>out.push(v)});
-assert.deepEqual(out,[30]);
-console.log("BYTECODE VM TEST PASSED.");
+const execute = source => {
+  const output = [];
+  const ast = parse(lex(source));
+  const bc = compileBytecode(ast);
+  const result = runBytecode(bc, { output: value => output.push(value) });
+  return { output, result };
+};
+
+assert.deepEqual(execute("GLOP x=10\nGLOP y=20\nYAP x+y").output, [30]);
+
+assert.deepEqual(
+  execute("WIZARD add(a,b){ YEET a+b } YAP BONK add(10,20)").output,
+  [30]
+);
+
+assert.deepEqual(
+  execute("WIZARD square(x){ YEET x*x } YAP BONK square(7)").output,
+  [49]
+);
+
+assert.deepEqual(
+  execute("WIZARD choose(x){ SUS x>10 { YEET 100 } NAH { YEET 200 } } YAP BONK choose(3)").output,
+  [200]
+);
+
+assert.deepEqual(
+  execute("WIZARD nested(a){ GLOP b=5 YEET a+b } YAP BONK nested(7)").output,
+  [12]
+);
+
+assert.throws(
+  () => execute("WIZARD add(a,b){ YEET a+b } YAP BONK add(1)").output,
+  /expected 2 argument/
+);
+
+console.log("GLOP BYTECODE VM FUNCTION TESTS PASSED.");

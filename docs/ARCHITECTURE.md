@@ -18,3 +18,19 @@ Compiler layers:
 GLOP 1.0 targets general-purpose programming: functions, data structures, modules, exceptions, files, networking, process interaction, concurrency primitives, testing, package management and tooling.
 
 A feature is not considered finished merely because the parser accepts its keyword.
+
+## VM control flow and functions (0.2.x)
+
+The bytecode VM now has real function call frames and structured loop control.
+
+- Top-level WIZARD declarations are hoisted by the bytecode compiler, allowing functions to call other top-level functions regardless of declaration order.
+- CALL creates a VM frame containing the caller chunk, instruction pointer and locals.
+- RETURN restores the caller frame and transfers the return value.
+- Function parameters and local variables use numeric local slots.
+- SPIN compiles to a condition jump plus a backward jump.
+- NOPE records a patched jump to the end of the active loop.
+- ZOOM jumps to the active loop condition.
+- Recursive function calls use the same frame mechanism as ordinary calls.
+
+This is still deliberately below the level required for a mature language: closures/upvalues, heap objects, exceptions, arrays/objects, modules and garbage collection remain separate VM milestones.
+\n

@@ -1,4 +1,5 @@
 import{node as makeNode}from"./ast.js";
+const node=(type,props={})=>makeNode(type,{...props,loc:props.loc??Parser.currentLocation??null});
 export class GlopParseError extends Error{constructor(message,t){super(`${message} at ${t.line}:${t.column}`);}}
 export class Parser{
  constructor(tokens){this.tokens=tokens;this.i=0} peek(){return this.tokens[this.i]} advance(){return this.tokens[this.i++]} prev(){return this.tokens[this.i-1]}
@@ -7,6 +8,7 @@ export class Parser{
  parse(){const body=[];while(!this.check("eof"))body.push(this.statement());return node("Program",{body})}
  block(){this.expect("{");const body=[];while(!this.check("}")&&!this.check("eof"))body.push(this.statement());this.expect("}");return body}
  statement(){
+  const t=this.peek(); Parser.currentLocation={line:t.line,column:t.column};
   if(this.match("STEAL")){
    const path=this.expect("string","STEAL requires a module path string").value;
    const as=this.expect("identifier","STEAL requires AS <alias>");
@@ -48,5 +50,6 @@ export class Parser{
   if(this.match("[")){const elements=[];if(!this.check("]")){do elements.push(this.expression());while(this.match(","))}this.expect("]");return node("Array",{elements})}
   if(this.match("{")){const properties=[];if(!this.check("}")){do{const key=this.expect("identifier").value;this.expect(":");properties.push({key,value:this.expression()})}while(this.match(","))}this.expect("}");return node("Object",{properties})}
   throw new GlopParseError("Expected expression",t)
- }}
+ }
+Parser.currentLocation=null;
 export const parse=tokens=>new Parser(tokens).parse();

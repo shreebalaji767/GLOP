@@ -1,0 +1,9 @@
+GLOP x = 10
+GLOP y = 20
+YAP x + y
+
+SUS x < y {
+  YAP «X IS SMOL»
+} NAH {
+  YAP «X IS NOT SMOL»
+}

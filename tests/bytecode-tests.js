@@ -49,6 +49,16 @@ assert.deepEqual(
   [1,2,3,4,6,7]
 );
 
+assert.deepEqual(
+  execute("WIZARD makeCounter(start){ GLOP x=start WIZARD inc(){ x+=1 YEET x } YEET inc } GLOP counter=BONK makeCounter(10) YAP BONK counter() YAP BONK counter()").output,
+  [11,12]
+);
+
+assert.deepEqual(
+  execute("WIZARD outer(a){ WIZARD middle(){ WIZARD inner(){ YEET a } YEET inner } YEET BONK middle() } YAP BONK outer(42)").output,
+  [42]
+);
+
 assert.throws(
   () => execute("WIZARD add(a,b){ YEET a+b } YAP BONK add(1)").output,
   /expected 2 argument/

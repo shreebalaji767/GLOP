@@ -383,7 +383,7 @@ static Value nativeClamp(const std::vector<Value>& a){
 }
 static Value nativeAssert(const std::vector<Value>& a){
   if(a.empty()||a.size()>2) throw Error("ASSERT expects 1 or 2 arguments");
-  if(!truthy(a[0])) throw Error(a.size()==2 ? show(a[1]) : "ASSERT failed");
+  if(!truth(a[0])) throw Error(a.size()==2 ? show(a[1]) : "ASSERT failed");
   return true;
 }
 static Value nativeRepeat(const std::vector<Value>& a){

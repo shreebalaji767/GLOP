@@ -64,3 +64,7 @@ GLOP functions now support lexical closures in the bytecode VM.
 
 The implementation uses cells/upvalues rather than copying captured values. This is the foundation required for higher-order functions, callbacks and later garbage-collected heap objects.
 
+
+## Native VM parity milestone
+
+The C++17 bytecode runtime now executes the core object and exception opcodes: object literals, member access, indexed object access, object mutation, TRY/CATCH handler registration, OOPSIE propagation and handler unwinding across call frames. Arrays and functions remain supported. Closures/upvalues are still intentionally isolated behind the next bytecode-format milestone so captured environments can be serialized explicitly rather than guessed by the native runtime.

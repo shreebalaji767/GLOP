@@ -7,6 +7,18 @@ export class Parser{
  parse(){const body=[];while(!this.check("eof"))body.push(this.statement());return node("Program",{body})}
  block(){this.expect("{");const body=[];while(!this.check("}")&&!this.check("eof"))body.push(this.statement());this.expect("}");return body}
  statement(){
+  if(this.match("STEAL")){
+   const path=this.expect("string","STEAL requires a module path string").value;
+   const as=this.expect("identifier","STEAL requires AS <alias>");
+   if(as.value!=="AS")throw new GlopParseError("STEAL requires AS <alias>",as);
+   const alias=this.expect("identifier","Expected module alias").value;
+   this.match(";");return node("ImportDecl",{path,alias});
+  }
+  if(this.match("FLEX")){
+   const names=[this.expect("identifier","FLEX requires an exported name").value];
+   while(this.match(","))names.push(this.expect("identifier","Expected exported name").value);
+   this.match(";");return node("ExportDecl",{names});
+  }
   if(this.match("GLOP")){const name=this.expect("identifier","Expected variable name").value;this.expect("=");const value=this.expression();this.match(";");return node("VarDecl",{name,value})}
   if(this.match("YAP")){const expression=this.expression();this.match(";");return node("Print",{expression})}
   if(this.match("SUS")){const test=this.expression(),consequent=this.block();let alternate=null;if(this.match("NAH"))alternate=this.block();return node("If",{test,consequent,alternate})}
@@ -30,7 +42,7 @@ export class Parser{
   const t=this.peek();
   if(this.match("number")||this.match("string"))return node("Literal",{value:t.value});
   if(this.match("BASED"))return node("Literal",{value:true});if(this.match("CAP"))return node("Literal",{value:false});if(this.match("VOID"))return node("Literal",{value:null});
-  if(this.match("BONK")){const callee=node("Identifier",{name:this.expect("identifier").value});this.expect("(");const args=[];if(!this.check(")")){do args.push(this.expression());while(this.match(","))}this.expect(")");return node("Call",{callee,args})}
+  if(this.match("BONK")){let callee;if(this.check("identifier"))callee=node("Identifier",{name:this.advance().value});else callee=this.primary();this.expect("(");const args=[];if(!this.check(")")){do args.push(this.expression());while(this.match(","))}this.expect(")");return node("Call",{callee,args})}
   if(this.match("identifier"))return node("Identifier",{name:t.value});
   if(this.match("(")){const e=this.expression();this.expect(")");return e}
   if(this.match("[")){const elements=[];if(!this.check("]")){do elements.push(this.expression());while(this.match(","))}this.expect("]");return node("Array",{elements})}

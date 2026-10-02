@@ -250,6 +250,15 @@ int main(int argc,char**argv){
     if(argc!=2){std::cerr<<"GLOP 0.4.0 native runtime\nusage: glop <program.glop>\n";return 2;}
     auto ast=glop::Parser(glop::Lexer(glop::readFile(argv[1])).all()).program();
     auto env=std::make_shared<glop::Env>();
+    env->vars["LEN"]=glop::Value(glop::nativeLen);
+    env->vars["PUSH"]=glop::Value(glop::nativePush);
+    env->vars["POP"]=glop::Value(glop::nativePop);
+    env->vars["TYPE"]=glop::Value(glop::nativeType);
+    env->vars["ABS"]=glop::Value(glop::nativeAbs);
+    env->vars["SQRT"]=glop::Value(glop::nativeSqrt);
+    env->vars["FLOOR"]=glop::Value(glop::nativeFloor);
+    env->vars["CEIL"]=glop::Value(glop::nativeCeil);
+    env->vars["TO_STRING"]=glop::Value(glop::nativeToString);
     for(auto&s:ast)s->exec(env);
     return 0;
   }catch(const glop::Error&e){std::cerr<<"GLOP OOPSIE: "<<e.what()<<"\n";return 1;}

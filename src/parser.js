@@ -51,5 +51,6 @@ export class Parser{
   if(this.match("{")){const properties=[];if(!this.check("}")){do{const key=this.expect("identifier").value;this.expect(":");properties.push({key,value:this.expression()})}while(this.match(","))}this.expect("}");return node("Object",{properties})}
   throw new GlopParseError("Expected expression",t)
  }
+}
 Parser.currentLocation=null;
 export const parse=tokens=>new Parser(tokens).parse();

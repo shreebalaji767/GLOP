@@ -1,0 +1,22 @@
+// GLOP OOPS object-oriented programming
+OOPS Person {
+    WIZARD init(name, age) {
+        THIS.name = name
+        THIS.age = age
+    }
+
+    WIZARD greet() {
+        YEET "HELLO " + THIS.name
+    }
+
+    WIZARD birthday() {
+        THIS.age += 1
+        YEET THIS.age
+    }
+}
+
+GLOP person = NEW Person("RAVI", 25)
+YAP person.name
+YAP BONK person.greet()
+YAP BONK person.birthday()
+YAP person.age

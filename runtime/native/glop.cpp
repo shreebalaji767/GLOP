@@ -267,7 +267,7 @@ struct ClassDecl:Stmt{std::string n,parentName;std::vector<MethodDef>methods; Cl
       c->parent=*pp;
     }
     for(auto&d:methods){auto f=std::make_shared<Function>();f->name=n+"."+d.n;f->params=d.p;f->body=std::move(d.b);f->closure=e;f->ownerClass=c;c->methods[d.n]=f;}e->vars[n]=c;}};
-struct NewExpr:Expr{std::unique_ptr<Expr>klass;std::vector<std::unique_ptr<Expr>>args;Value eval(std::shared_ptr<Env>e)override{auto cv=klass->eval(e);auto cp=std::get_if<std::shared_ptr<Class>>(&cv.v);if(!cp)throw Error("NEW target is not a class");auto inst=std::make_shared<Instance>();inst->klass=*cp;auto it=(*cp)->findMethod("init");std::vector<Value>a;for(auto&x:args)a.push_back(x->eval(e));if(it)it->second->call(a,Value(inst));else if(!a.empty())throw Error("constructor init not found");return inst;}};
+struct NewExpr:Expr{std::unique_ptr<Expr>klass;std::vector<std::unique_ptr<Expr>>args;Value eval(std::shared_ptr<Env>e)override{auto cv=klass->eval(e);auto cp=std::get_if<std::shared_ptr<Class>>(&cv.v);if(!cp)throw Error("NEW target is not a class");auto inst=std::make_shared<Instance>();inst->klass=*cp;auto it=(*cp)->findMethod("init");std::vector<Value>a;for(auto&x:args)a.push_back(x->eval(e));if(it)it->call(a,Value(inst));else if(!a.empty())throw Error("constructor init not found");return inst;}};
 
  class Parser {
  std::vector<Token>t;size_t i=0;

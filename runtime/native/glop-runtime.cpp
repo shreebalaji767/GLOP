@@ -159,9 +159,35 @@ public:
 
 } // namespace glop
 
+
+static std::string chaosDiagnostic(const std::string& message){
+  if(message.find("unterminated string")!=std::string::npos)
+    return "GLOP-E1001 [SYNTAX GOBLIN] \n  THE QUOTE ESCAPED. THE STRING DID NOT.\n  Technical: "+message;
+  if(message.find("unexpected character")!=std::string::npos)
+    return "GLOP-E1002 [CHARACTER MUTINY] \n  A CHARACTER JUST WALKED INTO THE COMPILER UNINVITED.\n  Technical: "+message;
+  if(message.find("expected ")==0)
+    return "GLOP-E1003 [PARSER PANIC] \n  THE PARSER WANTED ONE THING AND GOT ABSOLUTELY ANOTHER.\n  Technical: "+message;
+  if(message.find("undefined variable")!=std::string::npos)
+    return "GLOP-E2001 [NAME GOBLIN] \n  THAT NAME DOES NOT EXIST IN THIS UNIVERSE.\n  Technical: "+message;
+  if(message.find("wrong argument count")!=std::string::npos)
+    return "GLOP-E2002 [BONK MISFIRE] \n  FUNCTION BONKED. ARGUMENTS DID NOT MATCH.\n  Technical: "+message;
+  if(message.find("division by zero")!=std::string::npos)
+    return "GLOP-E3001 [MATH GREMLIN] \n  ZERO HAS ENTERED THE DENOMINATOR. MATHEMATICS HAS FILED A COMPLAINT.\n  Technical: "+message;
+  if(message.find("array index out of range")!=std::string::npos)
+    return "GLOP-E3002 [INDEX CANNON] \n  YOU FIRED AN INDEX INTO EMPTY SPACE.\n  Technical: "+message;
+  if(message.find("not a class")!=std::string::npos || message.find("unknown instance member")!=std::string::npos)
+    return "GLOP-E4001 [OOPS CLASS DISASTER] \n  THE OBJECT-ORIENTED UNIVERSE HAS REJECTED YOUR REQUEST.\n  Technical: "+message;
+  if(message.find("not a function")!=std::string::npos)
+    return "GLOP-E4002 [BONK TARGET DISASTER] \n  YOU BONKED SOMETHING THAT IS NOT A FUNCTION.\n  IT REMAINS EXTREMELY UNIMPRESSED.\n  Technical: "+message;
+  return "GLOP-E9999 [CHAOS ENGINE] \n  SOMETHING WENT SIDEWAYS WITH GREAT CONFIDENCE.\n  Technical: "+message;
+}
+static void printChaosSuccess(const std::string&what){
+  std::cout<<"[SUCCESS: SOMEHOW] "<<what<<" \n";
+}
+
 int main(int argc,char**argv){
   try{
     if(argc!=2){std::cerr<<"usage: glop-runtime <program.gbc>\n";return 2;}
     auto chunk=glop::load(argv[1]); auto result=glop::VM(chunk).run(); (void)result; return 0;
-  }catch(const std::exception&e){std::cerr<<"GLOP RUNTIME OOPSIE: "<<e.what()<<"\n";return 1;}
+  }catch(const std::exception&e){std::cerr<<chaosDiagnostic(e.what())<<"\n";return 1;}
 }

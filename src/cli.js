@@ -28,7 +28,7 @@ const usage = `GLOP 0.13.0
   glop check <file.glop>
   glop build <file.glop> [-o out.gbc]
   glop tokens <file.glop>
-  glop dump <file.glop|file.gbc>\n  glop trace <file.glop|file.gbc>`;
+  glop dump <file.glop|file.gbc>\n  glop trace <file.glop|file.gbc>\n  glop verify <file.gbc>`;
 
 if (!cmd || !file) {
   console.log(usage);
@@ -37,11 +37,31 @@ if (!cmd || !file) {
 
 try {
   if (cmd === "trace") {
+    if (file.toLowerCase().endsWith(".gbc")) {
+      const bc = readGBC(file);
+      const report = verifyBytecode(bc);
+      console.log("GLOP BYTECODE OK: max stack " + report.maxStack);
+      runBytecode(bc, { output: console.log, trace: true });
+      process.exit(0);
+    }
     const source = fs.readFileSync(file, "utf8");
     const ast = parse(lex(source));
-    analyze(ast);
-    const bc = file.toLowerCase().endsWith(".gbc") ? readGBC(file) : compileBytecode(ast);
-    verifyBytecode(bc); runBytecode(bc, { output: console.log, trace: true });
+    const program = ast.body.some(s => s.type === "ImportDecl" || s.type === "ExportDecl")
+      ? bundleModules(file).ast
+      : ast;
+    analyze(program);
+    const bc = compileBytecode(program);
+    const report = verifyBytecode(bc);
+    console.log("GLOP BYTECODE OK: max stack " + report.maxStack);
+    runBytecode(bc, { output: console.log, trace: true });
+    process.exit(0);
+  }
+
+  if (cmd === "verify") {
+    if (!file.toLowerCase().endsWith(".gbc")) throw new Error("verify expects a .gbc file");
+    const bc = readGBC(file);
+    const report = verifyBytecode(bc);
+    console.log("GLOP BYTECODE VERIFIED: " + file + " | max stack " + report.maxStack);
     process.exit(0);
   }
 

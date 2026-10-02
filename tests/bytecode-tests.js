@@ -29,7 +29,7 @@ assert.deepEqual(execute("WIZARD outer(a){ WIZARD middle(){ WIZARD inner(){ YEET
 assert.deepEqual(execute("WIZARD makePair(start){ GLOP x=start WIZARD inc(){ x+=1 YEET x } WIZARD read(){ YEET x } YEET inc } GLOP f=BONK makePair(3) YAP BONK f() YAP BONK f()").output,[4,5]);
 const closureAst=parse(lex("WIZARD outer(a){ WIZARD middle(){ WIZARD inner(){ YEET a } YEET inner } YEET BONK middle()() }"));
 const closureBC=compileBytecode(closureAst);
-assert.equal(encodeGBC(closureBC).subarray(0,4).toString("ascii"),"GBC2");
+assert.equal(encodeGBC(closureBC).subarray(0,4).toString("ascii"),"GBC3");
 assert.equal(closureBC.functions[0].freeNames?.length??0,0);
 assert.equal(closureBC.functions[0].functions[0].freeNames[0],"a");
 const roundTrip = decodeGBC(encodeGBC(closureBC));
@@ -40,6 +40,7 @@ const simple = compileBytecode(parse(lex("GLOP x=21 YAP x*2")));
 const simpleRoundTripOutput=[];
 assert.equal(runBytecode(decodeGBC(encodeGBC(simple)),{output:value=>simpleRoundTripOutput.push(value)}),null);
 assert.deepEqual(simpleRoundTripOutput,[42]);
+assert.ok(decodeGBC(encodeGBC(closureBC)).code.some(ins=>ins.loc));
 assert.throws(()=>decodeGBC(Buffer.from("NOPE")),/unsupported or corrupt magic/);
 
 assert.throws(()=>execute("WIZARD add(a,b){ YEET a+b } YAP BONK add(1)").output,/expected 2 argument/);

@@ -101,10 +101,13 @@ export class BytecodeCompiler {
       case"Binary":{
         if(n.op==="&&"||n.op==="||"){
           this.expr(n.left);
-          const jump=n.op==="&&"?this.b.emit(OP.JUMP_IF_FALSE,null):this.b.emit(OP.JUMP_IF_TRUE,null);
-          this.b.emit(OP.POP);
+          const short=this.b.emit(n.op==="&&"?OP.JUMP_IF_FALSE:OP.JUMP_IF_TRUE,null);
           this.expr(n.right);
-          this.b.patch(jump,this.b.code.length);
+          const end=this.b.emit(OP.JUMP,null);
+          const shortTarget=this.b.code.length;
+          this.b.emit(OP.CONST,this.b.constant(n.op==="&&"?false:true));
+          this.b.patch(short,shortTarget);
+          this.b.patch(end,this.b.code.length);
           break;
         }
         this.expr(n.left);this.expr(n.right);

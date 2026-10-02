@@ -10,6 +10,7 @@ import { runBytecode } from "./vm.js";
 import { ModuleLoader } from "./module-loader.js";
 import { bundleModules } from "./module-bundler.js";
 import { disassemble } from "./disassembler.js";
+import { verifyBytecode } from "./verifier.js";
 
 const [, , cmd, file, ...rest] = process.argv;
 
@@ -40,12 +41,12 @@ try {
     const ast = parse(lex(source));
     analyze(ast);
     const bc = file.toLowerCase().endsWith(".gbc") ? readGBC(file) : compileBytecode(ast);
-    runBytecode(bc, { output: console.log, trace: true });
+    verifyBytecode(bc); runBytecode(bc, { output: console.log, trace: true });
     process.exit(0);
   }
 
   if (cmd === "run" && file.toLowerCase().endsWith(".gbc")) {
-    runBytecode(readGBC(file), { output: console.log });
+    const bc=readGBC(file); verifyBytecode(bc); runBytecode(bc, { output: console.log });
     process.exit(0);
   }
 
@@ -58,7 +59,7 @@ try {
       ? bundleModules(file).ast
       : ast;
     analyze(program);
-    console.log(disassemble(compileBytecode(program)));
+    const bc=compileBytecode(program); verifyBytecode(bc); console.log(disassemble(bc));
     process.exit(0);
   }
 
@@ -81,7 +82,7 @@ try {
       ? bundleModules(file).ast
       : ast;
     analyze(program);
-    writeGBC(compileBytecode(program), out);
+    const bc=compileBytecode(program); verifyBytecode(bc); writeGBC(bc, out);
     console.log("GLOP bytecode -> " + out);
     process.exit(0);
   }

@@ -39,7 +39,8 @@ export class Parser{
  expression(){Parser.currentLocation={line:this.peek().line,column:this.peek().column};return this.binary(0)}
  binary(min){let left=this.unary();const p={"||":1,"&&":2,"==":3,"!=":3,"<":4,">":4,"<=":4,">=":4,"+":5,"-":5,"*":6,"/":6,"%":6};while(this.peek().type==="operator"&&p[this.peek().value]>=min){const op=this.advance().value;left=node("Binary",{left,op,right:this.binary(p[op]+1)})}return left}
  unary(){if(this.match("!"))return node("Unary",{op:"!",argument:this.unary()});if(this.match("-"))return node("Unary",{op:"-",argument:this.unary()});return this.postfix(this.primary())}
- finishCall(callee){this.expect("(");const args=[];if(!this.check(")")){args.push(this.expression());while(this.match(",")){if(this.check(")"))throw new GlopParseError("Expected expression after comma",this.peek());args.push(this.expression())}}this.expect(")");return node("Call",{callee,args})}\n postfix(e){for(;;){if(this.match("(")){e=this.finishCall(e);continue}if(this.match("[")){const index=this.expression();this.expect("]");e=node("Index",{object:e,index});continue}if(this.match(".")){e=node("Member",{object:e,property:this.expect("identifier").value});continue}break}return e}
+ finishCall(callee){this.expect("(");const args=[];if(!this.check(")")){args.push(this.expression());while(this.match(",")){if(this.check(")"))throw new GlopParseError("Expected expression after comma",this.peek());args.push(this.expression())}}this.expect(")");return node("Call",{callee,args})}
+ postfix(e){for(;;){if(this.match("(")){e=this.finishCall(e);continue}if(this.match("[")){const index=this.expression();this.expect("]");e=node("Index",{object:e,index});continue}if(this.match(".")){e=node("Member",{object:e,property:this.expect("identifier").value});continue}break}return e}
  primary(){
   const t=this.peek();
 

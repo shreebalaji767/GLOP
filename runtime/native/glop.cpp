@@ -75,8 +75,18 @@ struct Value {
   Value(const char*x):v(std::string(x)){} Value(std::shared_ptr<Array>x):v(std::move(x)){} Value(std::shared_ptr<Object>x):v(std::move(x)){} Value(std::shared_ptr<Function>x):v(std::move(x)){} Value(std::shared_ptr<Class>x):v(std::move(x)){} Value(std::shared_ptr<Instance>x):v(std::move(x)){} Value(std::function<Value(const std::vector<Value>&)>x):v(std::move(x)){}
 };
 struct ReturnSignal { Value value; };
-struct Expr { virtual ~Expr()=default; virtual Value eval(std::shared_ptr<Env>)=0; };
-struct Stmt { virtual ~Stmt()=default; virtual void exec(std::shared_ptr<Env>)=0; };
+struct Expr {
+  SourcePos pos;
+  explicit Expr(SourcePos p={}):pos(std::move(p)){}
+  virtual ~Expr()=default;
+  virtual Value eval(std::shared_ptr<Env>)=0;
+};
+struct Stmt {
+  SourcePos pos;
+  explicit Stmt(SourcePos p={}):pos(std::move(p)){}
+  virtual ~Stmt()=default;
+  virtual void exec(std::shared_ptr<Env>)=0;
+};
 
 static bool truth(const Value&v){if(std::holds_alternative<std::monostate>(v.v))return false;if(auto p=std::get_if<bool>(&v.v))return *p;if(auto p=std::get_if<double>(&v.v))return *p!=0;if(auto p=std::get_if<std::string>(&v.v))return !p->empty();return true;}
 static std::string show(const Value&v){
@@ -130,8 +140,8 @@ struct Class {
 };
 struct Instance { std::shared_ptr<Class> klass; std::unordered_map<std::string,Value> fields; };
 
-struct Literal:Expr{Value v;explicit Literal(Value x):v(std::move(x)){}Value eval(std::shared_ptr<Env>)override{return v;}};
-struct Name:Expr{std::string n;explicit Name(std::string x):n(std::move(x)){}Value eval(std::shared_ptr<Env>e)override{return e->get(n);}};
+struct Literal:Expr{Value v;explicit Literal(Value x):Expr(),v(std::move(x)){}Value eval(std::shared_ptr<Env>)override{return v;}};
+struct Name:Expr{std::string n;explicit Name(std::string x):Expr(),n(std::move(x)){}Value eval(std::shared_ptr<Env>e)override{return e->get(n);}};
 struct ArrayExpr:Expr{std::vector<std::unique_ptr<Expr>> a;Value eval(std::shared_ptr<Env>e)override{auto x=std::make_shared<Value::Array>();for(auto&z:a)x->push_back(z->eval(e));return x;}};
 struct ObjectExpr:Expr{std::vector<std::pair<std::string,std::unique_ptr<Expr>>> p;Value eval(std::shared_ptr<Env>e)override{auto x=std::make_shared<Value::Object>();for(auto&z:p)(*x)[z.first]=z.second->eval(e);return x;}};
 struct Unary:Expr{std::string op;std::unique_ptr<Expr>a; Unary(std::string o,std::unique_ptr<Expr>x):op(std::move(o)),a(std::move(x)){}Value eval(std::shared_ptr<Env>e)override{auto x=a->eval(e);if(op=="!")return !truth(x);return -num(x);}};
@@ -521,7 +531,8 @@ static std::string readFile(const std::string&f){std::ifstream in(f);if(!in)thro
 
 static bool gPlainDiagnostics=false;
 
-static std::string chaosDiagnostic(const std::string& message, bool plain=false){
+static std::string chaosDiagnostic(const std::string& message, bool plain=false, const SourcePos* pos=nullptr){
+  if(plain) return std::string("GLOP ERROR")+(pos?(" at "+pos->describe()):"")+": "+message;
   if(plain) return "GLOP ERROR: "+message;
   std::string code="GLOP-E9999",cat="[CHAOS ENGINE]",what="Something went sideways with great confidence.",
               why="The runtime encountered a condition it could not complete normally.",

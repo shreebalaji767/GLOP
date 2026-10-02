@@ -571,62 +571,6 @@ static std::string readFile(const std::string&f){std::ifstream in(f);if(!in)thro
 }
 
 
-static Diagnostic makeDiagnostic(const std::string&message,const SourcePos*pos);
-
-static bool gPlainDiagnostics=false;
-static std::string gSourcePath;
-static std::string gSourceText;
-
-static std::string chaosDiagnostic(const std::string& message, bool plain=false, const glop::SourcePos* pos=nullptr){
-  if(plain) return std::string("GLOP ERROR")+(pos?(" at "+pos->describe()):"")+": "+message;
-  std::string code="GLOP-E9999",cat="[CHAOS ENGINE]",what="Something went sideways with great confidence.",
-              why="The runtime encountered a condition it could not complete normally.",
-              fix="Read the technical detail, inspect the nearby code, and correct the reported condition.";
-  if(message.find("unterminated string")!=std::string::npos){code="GLOP-E1001";cat="[SYNTAX GOBLIN]";what="THE QUOTE ESCAPED. THE STRING DID NOT.";why="A string started with a quote but no matching closing quote was found.";fix="Close the string with the matching quote. Check the line for an accidental quote or missing delimiter.";}
-  else if(message.find("unexpected character")!=std::string::npos){code="GLOP-E1002";cat="[CHARACTER MUTINY]";what="A CHARACTER JUST WALKED INTO THE COMPILER UNINVITED.";why="The lexer found a character that is not valid GLOP syntax.";fix="Remove it or replace it with valid GLOP punctuation, an operator, a keyword, or a string.";}
-  else if(message.find("expected ")==0){code="GLOP-E1003";cat="[PARSER PANIC]";what="THE PARSER WANTED ONE THING AND GOT ABSOLUTELY ANOTHER.";why="The source structure does not match the grammar GLOP expected at that point.";fix="Inspect the reported location. Check missing braces, parentheses, commas, operators, or keywords.";}
-  else if(message.find("undefined variable")!=std::string::npos){code="GLOP-E2001";cat="[NAME GOBLIN]";what="THAT NAME DOES NOT EXIST IN THIS UNIVERSE.";why="The program tried to read a variable that is not defined in the current scope or its parents.";fix="Declare it with GLOP, check spelling, or verify that you are using the variable inside the correct scope.";}
-  else if(message.find("maximum call depth exceeded")!=std::string::npos){code="GLOP-E6002";cat="[RECURSION HYDRA]";what="THE WIZARD KEPT CALLING ITSELF UNTIL THE STACK SAID ENOUGH.";why="Nested WIZARD calls exceeded GLOP's safety limit of 1024 active calls.";fix="Check recursive base cases, accidental self-calls, and mutually recursive functions. Reduce recursion depth or redesign the algorithm.";}
-  else if(message.find("wrong argument count")!=std::string::npos){code="GLOP-E2002";cat="[BONK MISFIRE]";what="THE FUNCTION WAS BONKED WITH THE WRONG NUMBER OF ARGUMENTS.";why="The number of supplied arguments does not match the WIZARD's parameters.";fix="Count the parameters and arguments. Pass exactly the number the function declares.";}
-  else if(message.find("division by zero")!=std::string::npos){code="GLOP-E3001";cat="[MATH GREMLIN]";what="ZERO HAS ENTERED THE DENOMINATOR. MATHEMATICS HAS FILED A COMPLAINT.";why="The right-hand side of division evaluated to zero.";fix="Check the divisor before dividing. Use SUS to handle the zero case.";}
-  else if(message.find("array index out of range")!=std::string::npos){code="GLOP-E3002";cat="[INDEX CANNON]";what="YOU FIRED AN INDEX INTO EMPTY SPACE.";why="The requested array position is outside the valid range.";fix="Check LEN(array), and remember that array indexes start at 0.";}
-  else if(message.find("expected number")!=std::string::npos){code="GLOP-E3003";cat="[NUMBER GOBLIN]";what="A NUMBER WAS REQUESTED. SOMETHING ELSE ARRIVED WEARING A FAKE MUSTACHE.";why="An arithmetic or numeric operation received a non-number value.";fix="Check TYPE(value) and convert or validate the value before using numeric operators.";}
-  else if(message.find("not a class")!=std::string::npos || message.find("unknown instance member")!=std::string::npos){code="GLOP-E4001";cat="[OOPS CLASS DISASTER]";what="THE OBJECT-ORIENTED UNIVERSE HAS REJECTED YOUR REQUEST.";why="NEW or member access was used with the wrong kind of value or an unknown member.";fix="Check TYPE(value), the OOPS declaration, field names, and WIZARD methods.";}
-  else if(message.find("not a function")!=std::string::npos){code="GLOP-E4002";cat="[BONK TARGET DISASTER]";what="YOU BONKED SOMETHING THAT IS NOT A FUNCTION.";why="The value being called is not a WIZARD/function.";fix="Check TYPE(target), the declaration, and whether the variable was overwritten.";}
-  else if(message.find("invalid assignment")!=std::string::npos){code="GLOP-E2004";cat="[ASSIGNMENT CHAOS]";what="YOU TRIED TO STICK A VALUE SOMEWHERE THAT IS NOT STICKABLE.";why="The left side of the assignment is not a variable, member, or array element.";fix="Assign to a GLOP variable, object member, or valid array index.";}
-  else if(message.find("cannot open")!=std::string::npos){code="GLOP-E5001";cat="[FILE GOBLIN]";what="THE FILE DOOR IS LOCKED AND GLOP DOES NOT HAVE THE KEY.";why="The requested file could not be opened.";fix="Check the path, working directory, permissions, and whether the file exists.";}
-  std::string s=code+" "+cat+"\n\n  WHAT HAPPENED\n  "+what+"\n\n  WHY THIS MAY HAVE HAPPENED\n  "+why+"\n\n  WHAT CAN BE DONE\n  "+fix+"\n\n  TECHNICAL DETAIL\n  "+message+"\n\n  CHAOS REPORT\n  GLOP → PANIC → DIAGNOSE → FIX → BONK AGAIN";
-  if(pos && !gSourceText.empty()){
-    std::string sourceLine;
-    int lineNo=1;
-    size_t start=0;
-    while(start<gSourceText.size() && lineNo<pos->line){
-      size_t nl=gSourceText.find('\n',start);
-      if(nl==std::string::npos){start=gSourceText.size();break;}
-      start=nl+1;
-      ++lineNo;
-    }
-    if(start<gSourceText.size()){
-      size_t nl=gSourceText.find('\n',start);
-      sourceLine=gSourceText.substr(start,nl==std::string::npos?std::string::npos:nl-start);
-      s += "\n\n  SOURCE\n  "+gSourcePath+":"+pos->describe()+"\n  "+sourceLine+"\n  "+std::string(std::max(0,pos->col-1),' ')+"^";
-    }
-  }
-  return s;
-}
-static Diagnostic makeDiagnostic(const std::string&message,const SourcePos*pos=nullptr){
-  Diagnostic d; d.technical=message; if(pos){d.pos=*pos;d.hasPos=true;}
-  if(message.find("unterminated string")!=std::string::npos){d.code="GLOP-E1001";d.category="[SYNTAX GOBLIN]";d.what="THE QUOTE ESCAPED. THE STRING DID NOT.";d.why="A string started but no matching closing delimiter was found.";d.fix="Close the string with the matching quote.";}
-  else if(message.find("unexpected character")!=std::string::npos){d.code="GLOP-E1002";d.category="[CHARACTER MUTINY]";d.what="A CHARACTER JUST WALKED INTO THE COMPILER UNINVITED.";d.why="The lexer found a character that is not valid GLOP syntax.";d.fix="Remove it or replace it with valid GLOP syntax.";}
-  else if(message.find("expected ")==0){d.code="GLOP-E1003";d.category="[PARSER PANIC]";d.what="THE PARSER WANTED ONE THING AND GOT ABSOLUTELY ANOTHER.";d.why="The source does not match the grammar at this location.";d.fix="Inspect the caret and check nearby braces, parentheses, commas, and keywords.";}
-  else if(message.find("undefined variable")!=std::string::npos){d.code="GLOP-E2001";d.category="[NAME GOBLIN]";d.what="THAT NAME DOES NOT EXIST IN THIS UNIVERSE.";d.why="No binding exists in the current scope.";d.fix="Declare it, check spelling, or check scope.";}
-  else if(message.find("maximum call depth")!=std::string::npos){d.code="GLOP-E6002";d.category="[RECURSION HYDRA]";d.what="THE WIZARD KEPT CALLING ITSELF UNTIL THE STACK SAID ENOUGH.";d.why="Active WIZARD calls exceeded the safety limit.";d.fix="Check recursive base cases or rewrite iteratively.";}
-  else if(message.find("division by zero")!=std::string::npos){d.code="GLOP-E3001";d.category="[MATH GREMLIN]";d.what="ZERO HAS ENTERED THE DENOMINATOR.";d.why="The divisor evaluated to zero.";d.fix="Guard the divisor before dividing.";}
-  else if(message.find("array index out of range")!=std::string::npos){d.code="GLOP-E3002";d.category="[INDEX CANNON]";d.what="YOU FIRED AN INDEX INTO EMPTY SPACE.";d.why="The requested array position is outside the valid range.";d.fix="Check LEN(array) and use a valid index.";}
-  else {d.what="THE RUNTIME HAS ENCOUNTERED PREMIUM NONSENSE.";d.why="An operation could not complete normally.";d.fix="Read the technical detail and inspect the source around the caret.";}
-  return d;
-}
-
 static void printChaosSuccess(const std::string&what, bool plain=false){
   if(plain) std::cout<<"GLOP OK: "<<what<<"\n";
   else std::cout<<"[SUCCESS: SOMEHOW]\n  "<<what<<"\n  CHAOS ENGINE: SURVIVED\n";

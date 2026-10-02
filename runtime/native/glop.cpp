@@ -637,7 +637,7 @@ int main(int argc,char**argv){
       std::string arg=argv[ai];
       if(arg=="--plain"){gPlainDiagnostics=true;continue;}
       if(arg=="--help"||arg=="-h"){
-        std::cout<<"GLOP 0.12.0 native runtime — CHAOS MODE ENABLED\\n";
+        std::cout<<"GLOP 0.13.0 native runtime — CHAOS MODE ENABLED\\n";
         std::cout<<"usage: glop [--plain] <program.glop> [args...]\\n";
         std::cout<<"       glop [--plain] check <program.glop>\\n";
         std::cout<<"       glop --version\\n";
@@ -645,7 +645,7 @@ int main(int argc,char**argv){
         std::cout<<"diagnostics: chaotic by default; use --plain for boring machine-friendly output\\n";
         return 0;
       }
-      if(arg=="--version"||arg=="-v"){std::cout<<"GLOP 0.12.0 native runtime\\n";return 0;}
+      if(arg=="--version"||arg=="-v"){std::cout<<"GLOP 0.13.0 native runtime\\n";return 0;}
       positional.push_back(std::move(arg));
     }
     if(positional.empty()){std::cerr<<"usage: glop [--plain] <program.glop> [args...]\\n";return 2;}
@@ -703,7 +703,7 @@ int main(int argc,char**argv){
     env->vars["JOIN"]=glop::Value(glop::nativeJoin);
     for(auto&s:ast)s->exec(env);
     return 0;
-  }catch(const glop::Error&e){auto d=makeDiagnostic(e.what(),e.hasPos?&e.pos:nullptr);std::cerr<<d.format(gPlainDiagnostics,gSourcePath,gSourceText)<<"\n";return 1;}
+  }catch(const glop::Error&e){auto d=glop::makeDiagnostic(e.what(),e.hasPos?&e.pos:nullptr);std::cerr<<d.format(gPlainDiagnostics,gSourcePath,gSourceText)<<"\n";return 1;}
   catch(const glop::ReturnSignal&){std::cerr<<"GLOP-E2003 [YEET CRIME]\\n  YEET ESCAPED A WIZARD. THIS IS NOT A NORMAL EXIT.\\n  Technical: YEET outside WIZARD\\n";return 1;}
   catch(...){std::cerr<<chaosDiagnostic("unknown runtime failure", gPlainDiagnostics)<<"\n";return 1;}
 }

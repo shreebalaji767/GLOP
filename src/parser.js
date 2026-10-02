@@ -8,7 +8,7 @@ export class Parser{
  parse(){const body=[];while(!this.check("eof"))body.push(this.statement());return node("Program",{body})}
  block(){this.expect("{");const body=[];while(!this.check("}")&&!this.check("eof"))body.push(this.statement());this.expect("}");return body}
  statement(){
-  const t=this.peek(); if(t?.value==="UPPER")console.log("PARSER UPPER",t.type,this.check("identifier"),/^[A-Z_][A-Z0-9_]*$/.test(String(t.value))); Parser.currentLocation={line:t.line,column:t.column};
+  const t=this.peek(); Parser.currentLocation={line:t.line,column:t.column};
   if(this.match("STEAL")){
    const path=this.expect("string","STEAL requires a module path string").value;
    const as=this.expect("identifier","STEAL requires AS <alias>");

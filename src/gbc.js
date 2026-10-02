@@ -99,10 +99,12 @@ const readChunk=(r,withLocations=false)=>{
 
 export const decodeGBC=buffer=>{
   const b=Buffer.isBuffer(buffer)?buffer:Buffer.from(buffer);
-  if(b.subarray(0,4).toString("ascii")!=="GBC2")throw new Error("GBC OOPSIE: unsupported or corrupt magic");
-  if(b[4]!==2)throw new Error("GBC OOPSIE: unsupported GBC2 version "+b[4]);
+  const magic=b.subarray(0,4).toString("ascii");
+  if(magic!=="GBC2"&&magic!=="GBC3")throw new Error("GBC OOPSIE: unsupported or corrupt magic");
+  const version=b[4];
+  if((magic==="GBC2"&&version!==2)||(magic==="GBC3"&&version!==3))throw new Error("GBC OOPSIE: unsupported GBC version "+version);
   const r=new Reader(b);r.o=5;
-  const chunk=readChunk(r);
+  const chunk=readChunk(r,magic==="GBC3");
   if(r.o!==b.length)throw new Error("GBC OOPSIE: trailing bytes after program");
   return chunk;
 };

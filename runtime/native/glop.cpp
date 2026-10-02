@@ -278,14 +278,33 @@ public:
  std::unique_ptr<Expr> expr(){return binary(0);}
  std::unique_ptr<Expr> binary(int min){auto a=unary();static const std::unordered_map<std::string,int>p{{"||",1},{"&&",2},{"==",3},{"!=",3},{"<",4},{"<=",4},{">",4},{">=",4},{"+",5},{"-",5},{"*",6},{"/",6},{"%",6}};while(p.count(cur().text)&&p.at(cur().text)>=min){Token ot=take();auto op=ot.text;auto b=binary(p.at(op)+1);a=mark(std::make_unique<Binary>(Binary{op,std::move(a),std::move(b)}),ot);}return a;}
  std::unique_ptr<Expr> unary(){if(at("!")){Token ot=take();return mark(std::make_unique<Unary>(Unary{"!",unary()}),ot);}if(at("-")){Token ot=take();return mark(std::make_unique<Unary>(Unary{"-",unary()}),ot);}return postfix(primary());}
- std::unique_ptr<Expr> postfix(std::unique_ptr<Expr>a){while(true){if(at("(")){take();auto c=std::make_unique<Call>();c->f=std::move(a);if(!at(")")){do{c->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");a=std::move(c);continue;}if(at("[")){take();auto x=expr();need("]");auto q=std::make_unique<Index>();q->o=std::move(a);q->i=std::move(x);a=std::move(q);continue;}if(at(".")){take();auto q=std::make_unique<Member>();q->o=std::move(a);q->k=take().text;a=std::move(q);continue;}break;}return a;}
+ std::unique_ptr<Expr> postfix(std::unique_ptr<Expr>a){
+  while(true){
+    if(at("(")){
+      Token op=take(); auto c=std::make_unique<Call>(); c->f=std::move(a);
+      if(!at(")")){do{c->args.push_back(expr());}while(at(",")&&take().text==",");}
+      need(")"); a=mark(std::move(c),op); continue;
+    }
+    if(at("[")){
+      Token op=take(); auto x=expr(); need("]"); auto q=std::make_unique<Index>();
+      q->o=std::move(a); q->i=std::move(x); a=mark(std::move(q),op); continue;
+    }
+    if(at(".")){
+      Token op=take(); auto q=std::make_unique<Member>(); q->o=std::move(a);
+      if(cur().kind!=Token::ID) throw Error("expected member name",here());
+      q->k=take().text; a=mark(std::move(q),op); continue;
+    }
+    break;
+  }
+  return a;
+}
  std::unique_ptr<Expr> primary(){
   auto x=take();
   if(x.kind==Token::NUM)return mark(std::make_unique<Literal>(x.number),x);
   if(x.kind==Token::STR)return mark(std::make_unique<Literal>(x.text),x);
   if(x.text=="BASED")return mark(std::make_unique<Literal>(true),x);if(x.text=="CAP")return mark(std::make_unique<Literal>(false),x);if(x.text=="VOID")return mark(std::make_unique<Literal>(Value()),x);
-  if(x.text=="BONK"){auto f=mark(std::make_unique<Name>(take().text),x);need("(");auto c=std::make_unique<Call>();c->f=std::move(f);if(!at(")")){do{c->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");return c;}
-  if(x.text=="SUPER"){auto n=take().text;return mark(std::make_unique<SuperMember>(n),x);} if(x.text=="NEW"){auto n=std::make_unique<NewExpr>();n->klass=std::make_unique<Name>(take().text);need("(");if(!at(")")){do{n->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");return mark(std::move(n),x);}
+  if(x.text=="BONK"){Token fn=take();auto f=mark(std::make_unique<Name>(fn.text),fn);need("(");auto c=std::make_unique<Call>();c->f=std::move(f);if(!at(")")){do{c->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");return c;}
+  if(x.text=="SUPER"){Token n=take();return mark(std::make_unique<SuperMember>(n.text),x);} if(x.text=="NEW"){auto n=std::make_unique<NewExpr>();Token cn=take();n->klass=mark(std::make_unique<Name>(cn.text),cn);need("(");if(!at(")")){do{n->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");return mark(std::move(n),x);}
   if(x.kind==Token::ID)return mark(std::make_unique<Name>(x.text),x);
   if(x.text=="("){auto a=expr();need(")");return a;}
   if(x.text=="["){auto a=std::make_unique<ArrayExpr>();if(!at("]")){do{a->a.push_back(expr());}while(at(",")&&take().text==",");}need("]");return mark(std::move(a),x);}

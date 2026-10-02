@@ -27,7 +27,7 @@ const usage = `GLOP 0.12.0
   glop check <file.glop>
   glop build <file.glop> [-o out.gbc]
   glop tokens <file.glop>
-  glop dump <file.glop|file.gbc>`;
+  glop dump <file.glop|file.gbc>\n  glop trace <file.glop|file.gbc>`;
 
 if (!cmd || !file) {
   console.log(usage);

@@ -86,3 +86,19 @@ The standalone executable supports:
 - `glop --help` — show usage and built-ins.
 
 This keeps the development toolchain language-owned: a user running the native executable does not need Node.js, Python, Java, or another language runtime.
+
+
+## Static semantic safety
+
+The JavaScript front-end now performs stronger compile-time checks before bytecode generation:
+
+- inferred primitive/container types: number, string, boolean, null, array, object and function
+- boolean-only SUS and SPIN conditions
+- numeric-only arithmetic for -, *, / and %
+- compatible operands for comparisons
+- string + string and number + number for +
+- assignment compatibility for known types
+- function-call arity validation
+- rejection of BONK on known non-function values
+
+The analyzer intentionally keeps unknown for values whose type cannot yet be proven statically. This is a gradual foundation rather than pretending GLOP has a complete static type system already.

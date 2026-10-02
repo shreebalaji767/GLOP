@@ -55,3 +55,17 @@ assert.throws(
 );
 
 console.log("GLOP SEMANTIC TESTS PASSED.");
+
+
+check("SUS BASED { YAP «YES» }");
+check("SPIN CAP { NOPE }");
+check("GLOP x=10 GLOP y=x+2");
+check("GLOP x=«A» GLOP y=x+«B»");
+
+assert.throws(() => check("SUS 123 { YAP 1 }"), e => e instanceof GlopSemanticError && e.code === "TYPE_ERROR");
+assert.throws(() => check("GLOP x=«A» GLOP y=x-1"), e => e instanceof GlopSemanticError && e.code === "TYPE_ERROR");
+assert.throws(() => check("GLOP x=10 GLOP x=«A»"), e => e instanceof GlopSemanticError && e.code === "DUPLICATE_DECLARATION");
+assert.throws(() => check("GLOP x=10 BONK x()"), e => e instanceof GlopSemanticError && e.code === "TYPE_ERROR");
+assert.throws(() => check("WIZARD add(a,b){ YEET a+b } BONK add(1)"), e => e instanceof GlopSemanticError && e.code === "ARITY_ERROR");
+
+console.log("GLOP STRONG SEMANTIC TESTS PASSED.");

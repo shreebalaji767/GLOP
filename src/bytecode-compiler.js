@@ -37,7 +37,8 @@ export class BytecodeCompiler {
       functions: this.b.functions,
       arity: n.params.length,
       name: n.name,
-      freeNames: context.freeNames
+      freeNames: context.freeNames,
+      localNames: Object.fromEntries(context.locals)
     };
 
     this.contexts.pop();

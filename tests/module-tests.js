@@ -61,8 +61,3 @@ assert.equal(bundled.modules.length,2);
 assert.throws(()=>bundleModules(path.join(dir,"a.glop")),e=>e.code==="MODULE_CYCLE");
 
 console.log("GLOP MODULE TESTS PASSED.");
-
-
-write("build-main.glop",`STEAL "./math.glop" AS math
-YAP BONK math.add(5)
-`);

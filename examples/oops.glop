@@ -1,22 +1,31 @@
-// GLOP OOPS object-oriented programming
+// GLOP OOPS: classes, inheritance, overriding, SUPER and INSTANCEOF
 OOPS Person {
     WIZARD init(name, age) {
         THIS.name = name
         THIS.age = age
     }
-
     WIZARD greet() {
         YEET "HELLO " + THIS.name
     }
-
     WIZARD birthday() {
         THIS.age += 1
         YEET THIS.age
     }
 }
-
+OOPS Employee EXTENDS Person {
+    WIZARD greet() {
+        YEET SUPER.greet() + " — EMPLOYEE"
+    }
+    WIZARD role() {
+        YEET "EMPLOYEE: " + THIS.name
+    }
+}
 GLOP person = NEW Person("RAVI", 25)
-YAP person.name
 YAP person.greet()
 YAP person.birthday()
-YAP person.age
+GLOP worker = NEW Employee("AMAN", 30)
+YAP worker.greet()
+YAP worker.role()
+YAP INSTANCEOF(worker, Employee)
+YAP INSTANCEOF(worker, Person)
+YAP TYPE(worker)

@@ -47,6 +47,7 @@ export class BytecodeCompiler {
   statement(n) {
     this.b.location=n.loc??null;
     switch(n.type){
+      case"ImportDecl":case"ExportDecl":break;
       case"VarDecl":this.expr(n.value);if(this.locals){const i=this.locals.size;this.locals.set(n.name,i);this.b.emit(OP.STORE_LOCAL,i)}else this.b.emit(OP.STORE_GLOBAL,n.name);break;
       case"FunctionDecl":this.defineFunction(n);break;
       case"Print":this.expr(n.expression);this.b.emit(OP.PRINT);break;

@@ -50,4 +50,19 @@ assert.throws(()=>new ModuleLoader().runEntry(path.join(dir,"a.glop")),e=>e inst
 write("invalid-export.glop",`FLEX nope`);
 assert.throws(()=>new ModuleLoader().runEntry(path.join(dir,"invalid-export.glop")),/Cannot FLEX undefined name/);
 
+const { bundleModules } = await import("../src/module-bundler.js");
+const { compileBytecode } = await import("../src/bytecode-compiler.js");
+const { runBytecode } = await import("../src/vm.js");
+const bundledOutput=[];
+const bundled = bundleModules(path.join(dir,"build-main.glop"));
+runBytecode(compileBytecode(bundled.ast), { output:value=>bundledOutput.push(value) });
+assert.deepEqual(bundledOutput,[45]);
+assert.equal(bundled.modules.length,2);
+assert.throws(()=>bundleModules(path.join(dir,"a.glop")),e=>e.code==="MODULE_CYCLE");
+
 console.log("GLOP MODULE TESTS PASSED.");
+
+
+write("build-main.glop",`STEAL "./math.glop" AS math
+YAP BONK math.add(5)
+`);

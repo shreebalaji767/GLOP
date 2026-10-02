@@ -186,7 +186,6 @@ export class Parser{
     throw new GlopParseError("Expected expression for call argument",this.peek());
 
    args.push(this.expression());
-   console.log("AFTERARG",JSON.stringify(this.peek()),this.check(")"));
 
    if(this.match(")"))break;
    this.expect(",","Expected , or ) after call argument");

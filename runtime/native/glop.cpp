@@ -522,9 +522,11 @@ int main(int argc,char**argv){
     }
     if(positional.empty()){std::cerr<<"usage: glop [--plain] <program.glop> [args...]\\n";return 2;}
     bool checkOnly=positional[0]=="check";
-    size_t pathIndex=checkOnly?1:0;
+    bool runCommand=positional[0]=="run";
+    size_t pathIndex=(checkOnly||runCommand)?1:0;
     if(positional.size()<=pathIndex) throw glop::Error(checkOnly ? "usage: glop check <program.glop>" : "missing program.glop path");
     if(checkOnly && positional.size()!=2) throw glop::Error("usage: glop check <program.glop>");
+    if(runCommand && positional.size()<2) throw glop::Error("usage: glop run <program.glop> [args...]");
     const std::string& sourcePath=positional[pathIndex];
     glop::gArgs.assign(positional.begin()+pathIndex+1,positional.end());
     auto ast=glop::Parser(glop::Lexer(glop::readFile(sourcePath)).all()).program();

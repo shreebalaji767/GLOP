@@ -1,4 +1,4 @@
-# GLOP 0.12
+# GLOP 0.13
 
 GLOP is a real programming language with ridiculous keywords and a serious compiler.
 
@@ -30,7 +30,7 @@ node src/cli.js run examples/hello.glop
 node src/cli.js compile examples/hello.glop\nnode src/cli.js build examples/hello.glop\n\n# Native runtime (after building runtime/native)\n./glop-runtime examples/hello.gbc
 \`\`\`
 
-GLOP 0.12 adds portable bytecode inspection and a JavaScript-side standard library aligned with the native runtime. The project now includes modules, closures, classes, exceptions, a persistent REPL, GBC2 bytecode, a disassembler, and native runtime tooling.
+GLOP 0.13 adds source-aware bytecode inspection and VM tracing and a JavaScript-side standard library aligned with the native runtime. The project now includes modules, closures, classes, exceptions, a persistent REPL, GBC3 bytecode with GBC2 compatibility, a disassembler, source-aware VM tracing, and native runtime tooling.
 
 
 ## Dependency-free native GLOP
@@ -109,6 +109,8 @@ glop dump program.glop
 glop dump program.gbc
 glop build program.glop -o program.gbc
 glop run program.gbc
+glop trace program.glop
+glop trace program.gbc
 ```
 
 The disassembler shows function metadata, closure/free-variable metadata, locals, constants, instruction offsets, opcodes, and operands.
@@ -186,3 +188,8 @@ GLOP> YAP BONK add(2,3)
 ```
 
 The REPL keeps its global environment between submissions, understands multi-line blocks, and supports `.help`, `.clear`, and `.exit`.
+
+
+## Source-aware debugging
+
+GLOP bytecode now carries source line/column metadata. The VM trace reports the function, source position, bytecode offset, opcode, operand, and stack depth. `GBC3` is the current format; the reader remains compatible with legacy `GBC2` files.

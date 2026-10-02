@@ -1,0 +1,13 @@
+GLOP nums = BONK RANGE(1, 10, 2)
+YAP nums
+YAP BONK HAS(nums, 2)
+
+GLOP person = {
+    name: "RAVI",
+    age: 25
+}
+YAP BONK HAS(person, "name")
+YAP BONK KEYS(person)
+
+YAP BONK NUMBER("123.45")
+YAP BONK UPPER("glop")

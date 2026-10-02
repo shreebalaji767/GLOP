@@ -3,7 +3,7 @@ const node=(type,props={})=>makeNode(type,{...props,loc:props.loc??Parser.curren
 export class GlopParseError extends Error{constructor(message,t){super(`${message} at ${t.line}:${t.column}`);}}
 export class Parser{
  constructor(tokens){this.tokens=tokens;this.i=0} peek(){return this.tokens[this.i]} advance(){return this.tokens[this.i++]} prev(){return this.tokens[this.i-1]}
- check(v){const t=this.peek();return t.value===v||t.type===v} match(v){if(this.check(v))return this.advance();return null} advanceIfCurrent(){return this.advance()}
+ check(v){const t=this.peek();return t.value===v||t.type===v} match(v){if(this.check(v))return this.advance();return null}
  expect(v,m=`Expected ${v}`){if(!this.check(v))throw new GlopParseError(m,this.peek());return this.advance()}
  parse(){const body=[];while(!this.check("eof"))body.push(this.statement());return node("Program",{body})}
  block(){this.expect("{");const body=[];while(!this.check("}")&&!this.check("eof"))body.push(this.statement());this.expect("}");return body}
@@ -46,7 +46,7 @@ export class Parser{
   if(this.match("BASED"))return node("Literal",{value:true});if(this.match("CAP"))return node("Literal",{value:false});if(this.match("VOID"))return node("Literal",{value:null});
   if(this.match("BONK")){let callee=this.primary();for(;;){if(this.match(".")){callee=node("Member",{object:callee,property:this.expect("identifier").value});continue}if(this.match("[")){const index=this.expression();this.expect("]");callee=node("Index",{object:callee,index});continue}break}this.expect("(");const args=[];if(!this.check(")")){do args.push(this.expression());while(this.match(","))}this.expect(")");return node("Call",{callee,args})}
   const builtinNames=new Set(["LEN","PUSH","POP","TYPE","TO_STRING","ABS","SQRT","FLOOR","CEIL","SUBSTR","UPPER","LOWER","HAS","KEYS","RANGE","NUMBER","MIN","MAX","POW","CLAMP","ASSERT","REPEAT","TRIM","REPLACE","SPLIT","JOIN","READ_FILE","WRITE_FILE","EXISTS","CWD","JOIN_PATH","ENV","ARGS","TIME_MS","SLEEP_MS","INSTANCEOF"]);
-  if(this.match("identifier")||builtinNames.has(t.value)){this.advanceIfCurrent();return node("Identifier",{name:t.value});}
+  if(this.check("identifier")||builtinNames.has(t.value)){this.advance();return node("Identifier",{name:t.value});}
   if(this.match("(")){const e=this.expression();this.expect(")");return e}
   if(this.match("[")){const elements=[];if(!this.check("]")){do elements.push(this.expression());while(this.match(","))}this.expect("]");return node("Array",{elements})}
   if(this.match("{")){const properties=[];if(!this.check("}")){do{const key=this.expect("identifier").value;this.expect(":");properties.push({key,value:this.expression()})}while(this.match(","))}this.expect("}");return node("Object",{properties})}

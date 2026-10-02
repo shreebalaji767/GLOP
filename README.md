@@ -30,7 +30,7 @@ node src/cli.js run examples/hello.glop
 node src/cli.js compile examples/hello.glop\nnode src/cli.js build examples/hello.glop\n\n# Native runtime (after building runtime/native)\n./glop-runtime examples/hello.gbc
 \`\`\`
 
-GLOP 0.9 is the module-loader, native-runtime and closure foundation for a future VM, modules, classes, package manager,
+GLOP 0.10 is the module-bundling, native-runtime and closure foundation for a future VM, modules, classes, package manager,
 formatter, debugger, REPL and browser playground.
 
 
@@ -135,8 +135,10 @@ Module behavior:
 - `FLEX` validates exported names before execution
 - module scope is isolated; exported GLOP functions retain the globals of their defining module
 - `glop run` uses the module loader
-- the bootstrap JavaScript compiler intentionally rejects `STEAL/FLEX`
-- native `.gbc` bundling of multi-file modules is not enabled yet; `glop build` rejects module programs instead of producing a misleading artifact
+- `glop build` recursively bundles `STEAL/FLEX` programs into one portable GBC2 artifact
+- dependency modules are initialized once in dependency-before-dependent order
+- module-local variables become isolated factory locals and exported functions retain their closures
+- circular imports are rejected during bundling
 
 The module system is deliberately path-based now; a package registry and dependency manager can build on this resolver later.
 

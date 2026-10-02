@@ -131,7 +131,8 @@ class VM {
     if(auto p=std::get_if<std::shared_ptr<Function>>(&a)) return *p==std::get<std::shared_ptr<Function>>(b);
     if(auto p=std::get_if<std::shared_ptr<Array>>(&a)) return *p==std::get<std::shared_ptr<Array>>(b);
     if(auto p=std::get_if<std::shared_ptr<Object>>(&a)) return *p==std::get<std::shared_ptr<Object>>(b);
-    return false;\n  }
+    return false;
+  }
   Value binary(uint8_t op,Value a,Value b){
     if(op==ADD && std::holds_alternative<std::string>(a) && std::holds_alternative<std::string>(b))return std::get<std::string>(a)+std::get<std::string>(b);
     double x=number(a),y=number(b);

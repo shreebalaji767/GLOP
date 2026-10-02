@@ -34,6 +34,21 @@ assert.deepEqual(
   [12]
 );
 
+assert.deepEqual(
+  execute("WIZARD fact(n){ SUS n<=1 { YEET 1 } YEET n*BONK fact(n-1) } YAP BONK fact(5)").output,
+  [120]
+);
+
+assert.deepEqual(
+  execute("GLOP x=0 SPIN x<5 { x+=1 } YAP x").output,
+  [5]
+);
+
+assert.deepEqual(
+  execute("GLOP x=0 SPIN x<10 { x+=1 SUS x==5 { ZOOM } SUS x==8 { NOPE } YAP x }").output,
+  [1,2,3,4,6,7]
+);
+
 assert.throws(
   () => execute("WIZARD add(a,b){ YEET a+b } YAP BONK add(1)").output,
   /expected 2 argument/

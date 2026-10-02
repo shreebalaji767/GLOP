@@ -30,7 +30,7 @@ node src/cli.js run examples/hello.glop
 node src/cli.js compile examples/hello.glop\nnode src/cli.js build examples/hello.glop\n\n# Native runtime (after building runtime/native)\n./glop-runtime examples/hello.gbc
 \`\`\`
 
-GLOP 0.8 is the native-runtime and closure foundation for a future VM, modules, classes, package manager,
+GLOP 0.9 is the module-loader, native-runtime and closure foundation for a future VM, modules, classes, package manager,
 formatter, debugger, REPL and browser playground.
 
 

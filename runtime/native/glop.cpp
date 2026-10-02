@@ -5,7 +5,6 @@
 #include <cstdlib>
 #include <thread>
 #include <filesystem>
-#include <cstdlib>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -32,8 +31,7 @@ class Lexer {
   std::string s; size_t p=0; int line=1,col=1;
   std::unordered_map<std::string,bool> kw{{"GLOP",1},{"YAP",1},{"SUS",1},{"NAH",1},{"SPIN",1},{"WIZARD",1},{"YEET",1},{"BASED",1},{"CAP",1},{"VOID",1},{"OOPSIE",1},{"TRY",1},{"CATCH",1},{"NOPE",1},{"ZOOM",1},{"BONK",1}};
   char peek(size_t n=0) const { return p+n<s.size()?s[p+n]:'\0'; }
-  char take(){char c=peek();if(!c)return 0;p++;if(c=='
-'){line++;col=1;}else col++;return c;}
+  char take(){char c=peek();if(!c)return 0;p++;if(c=='\\n'){line++;col=1;}else col++;return c;}
 public:
   explicit Lexer(std::string x):s(std::move(x)){}
   std::vector<Token> all(){
@@ -107,7 +105,7 @@ struct Binary:Expr{std::string op;std::unique_ptr<Expr>a,b;Value eval(std::share
   if(op=="==")return show(x)==show(y);if(op=="!=")return show(x)!=show(y);if(op=="<")return num(x)<num(y);if(op=="<=")return num(x)<=num(y);if(op==">")return num(x)>num(y);if(op==">=")return num(x)>=num(y);throw Error("unknown operator "+op);
 }};
 struct Member:Expr{std::unique_ptr<Expr>o;std::string k;Value eval(std::shared_ptr<Env>e)override{auto x=o->eval(e);auto p=std::get_if<std::shared_ptr<Value::Object>>(&x.v);if(!p)throw Error("member access requires object");return (*p)->count(k)?(*p)->at(k):Value();}};
-struct Index:Expr{std::unique_ptr<Expr>o,i;Value eval(std::shared_ptr<Env>e)override{auto x=o->eval(e),q=i->eval(e);size_t n=(size_t)num(q);if(auto p=std::get_if<std::shared_ptr<Value::Array>>(&x.v)){if(n>=(*p)->size())throw Error("array index out of range");return (*p)->at(n);}throw Error("index requires array");}};
+struct Index:Expr{std::unique_ptr<Expr>o,i;Value eval(std::shared_ptr<Env>e)override{auto x=o->eval(e),q=i->eval(e);size_t n=(size_t)num(q);if(auto p=std::get_if<std::shared_ptr<Value::Array>>(&x.v)){double d=num(q);if(d<0||std::floor(d)!=d)throw Error("array index must be an integer");if(n>=(*p)->size())throw Error("array index out of range");return (*p)->at(n);}throw Error("index requires array");}};
 
 struct Function {std::vector<std::string>params;std::vector<std::unique_ptr<Stmt>> body;std::shared_ptr<Env>closure;Value call(const std::vector<Value>&args){
   if(args.size()!=params.size())throw Error("wrong argument count");auto e=std::make_shared<Env>(closure);for(size_t i=0;i<args.size();i++)e->vars[params[i]]=args[i];

@@ -49,6 +49,22 @@ export class ModuleLoader {
       return exports;
     }finally{this.loading.pop()}
   }
+  check(file){
+    const seen=new Set(),loading=[];
+    const visit=current=>{
+      const canonical=path.resolve(current);
+      if(seen.has(canonical))return;
+      const cycle=loading.indexOf(canonical);
+      if(cycle>=0)throw new GlopModuleError(`circular import detected: ${[...loading.slice(cycle),canonical].join(" -> ")}`,"MODULE_CYCLE");
+      loading.push(canonical);
+      try{
+        const ast=this.parseFile(canonical);analyze(ast);
+        for(const imp of ast.body.filter(s=>s.type==="ImportDecl"))visit(this.resolve(imp.path,canonical));
+        seen.add(canonical);
+      }finally{loading.pop()}
+    };
+    visit(path.resolve(file));return true;
+  }
   runEntry(file){
     const canonical=path.resolve(file);
     const ast=this.parseFile(canonical);

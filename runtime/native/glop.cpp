@@ -658,10 +658,10 @@ int main(int argc,char**argv){
     if(checkOnly && positional.size()!=2) throw glop::Error("usage: glop check <program.glop>");
     if(runCommand && positional.size()<2) throw glop::Error("usage: glop run <program.glop> [args...]");
     const std::string& sourcePath=positional[pathIndex];
-    glop::gSourcePath=sourcePath;
-    glop::gSourceText=glop::readFile(sourcePath);
+    gSourcePath=sourcePath;
+    gSourceText=glop::readFile(sourcePath);
     glop::gArgs.assign(positional.begin()+pathIndex+1,positional.end());
-    auto ast=glop::Parser(glop::Lexer(glop::gSourceText).all()).program();
+    auto ast=glop::Parser(glop::Lexer(gSourceText).all()).program();
     if(checkOnly){
       printChaosSuccess("SOURCE CHECKED. NO GOBLINS FOUND.", gPlainDiagnostics);
       return 0;

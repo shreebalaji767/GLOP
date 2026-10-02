@@ -86,7 +86,23 @@ static std::string show(const Value&v){
   if(std::holds_alternative<std::function<Value(const std::vector<Value>&)>>(v.v))return "[native-function]";
   return "[function]";
 }
-static double num(const Value&v){if(auto p=std::get_if<double>(&v.v))return *p;throw Error("expected number");}
+static double num(const Value&v){
+  if(auto p=std::get_if<double>(&v.v))return *p;
+  throw Error("expected number");
+}
+static bool valueEqual(const Value&a,const Value&b){
+  if(a.v.index()!=b.v.index()) return false;
+  if(std::holds_alternative<std::monostate>(a.v)) return true;
+  if(auto x=std::get_if<bool>(&a.v)) return *x==std::get<bool>(b.v);
+  if(auto x=std::get_if<double>(&a.v)) return *x==std::get<double>(b.v);
+  if(auto x=std::get_if<std::string>(&a.v)) return *x==std::get<std::string>(b.v);
+  if(auto x=std::get_if<std::shared_ptr<Value::Array>>(&a.v)) return *x==std::get<std::shared_ptr<Value::Array>>(b.v);
+  if(auto x=std::get_if<std::shared_ptr<Value::Object>>(&a.v)) return *x==std::get<std::shared_ptr<Value::Object>>(b.v);
+  if(auto x=std::get_if<std::shared_ptr<Function>>(&a.v)) return *x==std::get<std::shared_ptr<Function>>(b.v);
+  if(auto x=std::get_if<std::shared_ptr<Class>>(&a.v)) return *x==std::get<std::shared_ptr<Class>>(b.v);
+  if(auto x=std::get_if<std::shared_ptr<Instance>>(&a.v)) return *x==std::get<std::shared_ptr<Instance>>(b.v);
+  return false;
+}
 
 struct Env : std::enable_shared_from_this<Env>{
   std::shared_ptr<Env> parent; std::unordered_map<std::string,Value> vars;
@@ -117,8 +133,8 @@ struct Unary:Expr{std::string op;std::unique_ptr<Expr>a; Unary(std::string o,std
 struct Binary:Expr{std::string op;std::unique_ptr<Expr>a,b; Binary(std::string o,std::unique_ptr<Expr>x,std::unique_ptr<Expr>y):op(std::move(o)),a(std::move(x)),b(std::move(y)){}Value eval(std::shared_ptr<Env>e)override{
   auto x=a->eval(e);if(op=="&&")return truth(x)?truth(b->eval(e)):false;if(op=="||")return truth(x)?true:truth(b->eval(e));auto y=b->eval(e);
   if(op=="+"){if(std::holds_alternative<std::string>(x.v)&&std::holds_alternative<std::string>(y.v))return std::get<std::string>(x.v)+std::get<std::string>(y.v);return num(x)+num(y);}
-  if(op=="-")return num(x)-num(y);if(op=="*")return num(x)*num(y);if(op=="/"){auto d=num(y);if(d==0)throw Error("division by zero");return num(x)/d;}if(op=="%")return std::fmod(num(x),num(y));
-  if(op=="==")return show(x)==show(y);if(op=="!=")return show(x)!=show(y);if(op=="<")return num(x)<num(y);if(op=="<=")return num(x)<=num(y);if(op==">")return num(x)>num(y);if(op==">=")return num(x)>=num(y);throw Error("unknown operator "+op);
+  if(op=="-")return num(x)-num(y);if(op=="*")return num(x)*num(y);if(op=="/"){auto d=num(y);if(d==0)throw Error("division by zero");return num(x)/d;}if(op=="%"){auto d=num(y);if(d==0)throw Error("modulo by zero");return std::fmod(num(x),d);}
+  if(op=="==")return valueEqual(x,y);if(op=="!=")return !valueEqual(x,y);if(op=="<")return num(x)<num(y);if(op=="<=")return num(x)<=num(y);if(op==">")return num(x)>num(y);if(op==">=")return num(x)>=num(y);throw Error("unknown operator "+op);
 }};
 struct Member:Expr{std::unique_ptr<Expr>o;std::string k;Value eval(std::shared_ptr<Env>e)override;};
 struct SuperMember:Expr{std::string k;explicit SuperMember(std::string x):k(std::move(x)){}Value eval(std::shared_ptr<Env>e)override{
@@ -192,7 +208,14 @@ struct TargetAssign:Stmt{
 };
 struct FnDecl:Stmt{std::string n;std::vector<std::string>p;std::vector<std::unique_ptr<Stmt>>b; FnDecl(std::string x,std::vector<std::string>q,std::vector<std::unique_ptr<Stmt>>z):n(std::move(x)),p(std::move(q)),b(std::move(z)){}void exec(std::shared_ptr<Env>e)override{auto f=std::make_shared<Function>();f->params=p;f->body=std::move(b);f->closure=e;e->vars[n]=f;}};
 struct MethodDef { std::string n; std::vector<std::string> p; std::vector<std::unique_ptr<Stmt>> b; };
-struct ClassDecl:Stmt{std::string n,parentName;std::vector<MethodDef>methods; ClassDecl(std::string x,std::string p,std::vector<MethodDef>m):n(std::move(x)),parentName(std::move(p)),methods(std::move(m)){}void exec(std::shared_ptr<Env>e)override{auto c=std::make_shared<Class>();c->name=n;c->closure=e;if(!parentName.empty()){auto pv=e->get(parentName);auto pp=std::get_if<std::shared_ptr<Class>>(&pv.v);if(!pp||!*pp)throw Error("OOPS parent is not a class: "+parentName);c->parent=*pp;}for(auto&d:methods){auto f=std::make_shared<Function>();f->params=d.p;f->body=std::move(d.b);f->closure=e;f->ownerClass=c;c->methods[d.n]=f;}e->vars[n]=c;}};
+struct ClassDecl:Stmt{std::string n,parentName;std::vector<MethodDef>methods; ClassDecl(std::string x,std::string p,std::vector<MethodDef>m):n(std::move(x)),parentName(std::move(p)),methods(std::move(m)){}void exec(std::shared_ptr<Env>e)override{auto c=std::make_shared<Class>();c->name=n;c->closure=e;if(!parentName.empty()){
+      auto pv=e->get(parentName);
+      auto pp=std::get_if<std::shared_ptr<Class>>(&pv.v);
+      if(!pp||!*pp) throw Error("OOPS parent is not a class: "+parentName);
+      for(auto p=*pp;p;p=p->parent) if(p->name==n) throw Error("OOPS inheritance cycle involving: "+n);
+      c->parent=*pp;
+    }
+    for(auto&d:methods){auto f=std::make_shared<Function>();f->params=d.p;f->body=std::move(d.b);f->closure=e;f->ownerClass=c;c->methods[d.n]=f;}e->vars[n]=c;}};
 struct NewExpr:Expr{std::unique_ptr<Expr>klass;std::vector<std::unique_ptr<Expr>>args;Value eval(std::shared_ptr<Env>e)override{auto cv=klass->eval(e);auto cp=std::get_if<std::shared_ptr<Class>>(&cv.v);if(!cp)throw Error("NEW target is not a class");auto inst=std::make_shared<Instance>();inst->klass=*cp;auto it=(*cp)->findMethod("init");std::vector<Value>a;for(auto&x:args)a.push_back(x->eval(e));if(it)it->second->call(a,Value(inst));else if(!a.empty())throw Error("constructor init not found");return inst;}};
 
 class Parser {

@@ -22,7 +22,9 @@ write("nested.glop",`STEAL "./math.glop" AS math
 WIZARD twice(x) { YEET BONK math.add(x) + 2 }
 FLEX twice
 `);
-write("build-main.glop",`STEAL "./nested.glop" AS nested\nYAP BONK nested.twice(3)\n`);\n\nwrite("main.glop",`STEAL "./math.glop" AS math
+write("build-main.glop",`STEAL "./nested.glop" AS nested\nYAP BONK nested.twice(3)\n`);
+
+write("main.glop",`STEAL "./math.glop" AS math
 STEAL "./once.glop" AS once
 STEAL "./nested.glop" AS nested
 YAP BONK math.add(2)

@@ -8,6 +8,7 @@ import { analyze } from "./semantic.js";
 import { compile } from "./compiler.js";
 import { compileBytecode } from "./bytecode-compiler.js";
 import { writeGBC } from "./gbc.js";
+import { runBytecode } from "./vm.js";
 
 const [, , cmd, file, ...rest] = process.argv;
 
@@ -52,13 +53,7 @@ try {
   }
 
   if (cmd === "run") {
-    const tmp = path.join(process.cwd(), ".glop-run-" + process.pid + ".mjs");
-    fs.writeFileSync(tmp, js);
-    try {
-      execFileSync(process.execPath, [tmp], { stdio: "inherit" });
-    } finally {
-      fs.rmSync(tmp, { force: true });
-    }
+    runBytecode(compileBytecode(ast));
     process.exit(0);
   }
 

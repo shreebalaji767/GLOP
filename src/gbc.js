@@ -31,22 +31,22 @@ const writeArg=(w,arg)=>{
   throw new Error("Unsupported bytecode argument: "+typeof arg);
 };
 
-const writeChunk=(w,c)=>{
+const writeChunk=(w,c,withLocations=false)=>{
   w.u32(c.arity??0);w.string(c.name??"<main>");
   w.u32((c.freeNames??[]).length);for(const n of (c.freeNames??[]))w.string(n);
   const localNames=Object.entries(c.localNames??{});w.u32(localNames.length);for(const [name,index] of localNames){w.u32(Number(index));w.string(name);}
   w.u32(c.constants.length);for(const v of c.constants)writeValue(w,v);
-  w.u32(c.functions.length);for(const fn of c.functions)writeChunk(w,fn);
+  w.u32(c.functions.length);for(const fn of c.functions)writeChunk(w,fn,withLocations);
   w.u32(c.code.length);
   for(const ins of c.code){
     const oi=opcodeIndex.get(ins.op);
     if(oi===undefined)throw new Error("Unknown opcode: "+ins.op);
-    w.u8(oi);writeArg(w,ins.arg);
+    w.u8(oi);writeArg(w,ins.arg);if(withLocations){const loc=ins.loc??null;w.u8(loc?1:0);if(loc){w.u32(loc.line??0);w.u32(loc.column??0);}}
   }
 };
 
 export const encodeGBC=bytecode=>{
-  const w=new Writer();w.parts.push(Buffer.from("GBC2"));w.u8(2);writeChunk(w,bytecode);return w.result();
+  const w=new Writer();w.parts.push(Buffer.from("GBC3"));w.u8(3);writeChunk(w,bytecode,true);return w.result();
 };
 
 export const writeGBC=(bytecode,file)=>fs.writeFileSync(file,encodeGBC(bytecode));
@@ -81,18 +81,18 @@ const readArg=r=>{
   throw new Error("GBC OOPSIE: invalid instruction argument tag");
 };
 
-const readChunk=r=>{
+const readChunk=(r,withLocations=false)=>{
   const arity=r.u32(),name=r.string();
   const freeCount=r.u32(),freeNames=[];for(let i=0;i<freeCount;i++)freeNames.push(r.string());
   const localCount=r.u32(),localNames={};
   for(let i=0;i<localCount;i++){const index=r.u32();const localName=r.string();localNames[localName]=index;}
   const constantCount=r.u32(),constants=[];for(let i=0;i<constantCount;i++)constants.push(readValue(r));
-  const functionCount=r.u32(),functions=[];for(let i=0;i<functionCount;i++)functions.push(readChunk(r));
+  const functionCount=r.u32(),functions=[];for(let i=0;i<functionCount;i++)functions.push(readChunk(r,withLocations));
   const codeCount=r.u32(),code=[];
   for(let i=0;i<codeCount;i++){
     const oi=r.u8();
     if(oi>=OPS.length)throw new Error("GBC OOPSIE: unknown opcode index "+oi);
-    code.push({op:OPS[oi],arg:readArg(r)});
+    const arg=readArg(r);let loc=null;if(withLocations){const has=r.u8();if(has){loc={line:r.u32(),column:r.u32()};}}code.push({op:OPS[oi],arg,loc});
   }
   return {arity,name,freeNames,localNames,constants,functions,code};
 };

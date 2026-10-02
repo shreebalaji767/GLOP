@@ -1,7 +1,6 @@
 GLOP data = [10, 20, 30]
 YAP LEN(data)
 YAP TYPE(data)
-YAP PUSH(data, 40)
-YAP LEN(data)
-YAP POP(data)
-YAP LEN(data)
+YAP RANGE(2, 6)
+YAP ABS(-7)
+YAP UPPER(«glop»)

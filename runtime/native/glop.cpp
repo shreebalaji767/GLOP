@@ -450,20 +450,48 @@ static Value nativeParseNumber(const std::vector<Value>& a){
 static std::string readFile(const std::string&f){std::ifstream in(f);if(!in)throw Error("cannot open "+f);return std::string((std::istreambuf_iterator<char>(in)),{});}
 }
 
+
+static std::string chaosDiagnostic(const std::string& message){
+  if(message.find("unterminated string")!=std::string::npos)
+    return "GLOP-E1001 [SYNTAX GOBLIN] \n  THE QUOTE ESCAPED. THE STRING DID NOT.\n  Technical: "+message;
+  if(message.find("unexpected character")!=std::string::npos)
+    return "GLOP-E1002 [CHARACTER MUTINY] \n  A CHARACTER JUST WALKED INTO THE COMPILER UNINVITED.\n  Technical: "+message;
+  if(message.find("expected ")==0)
+    return "GLOP-E1003 [PARSER PANIC] \n  THE PARSER WANTED ONE THING AND GOT ABSOLUTELY ANOTHER.\n  Technical: "+message;
+  if(message.find("undefined variable")!=std::string::npos)
+    return "GLOP-E2001 [NAME GOBLIN] \n  THAT NAME DOES NOT EXIST IN THIS UNIVERSE.\n  Technical: "+message;
+  if(message.find("wrong argument count")!=std::string::npos)
+    return "GLOP-E2002 [BONK MISFIRE] \n  FUNCTION BONKED. ARGUMENTS DID NOT MATCH.\n  Technical: "+message;
+  if(message.find("division by zero")!=std::string::npos)
+    return "GLOP-E3001 [MATH GREMLIN] \n  ZERO HAS ENTERED THE DENOMINATOR. MATHEMATICS HAS FILED A COMPLAINT.\n  Technical: "+message;
+  if(message.find("array index out of range")!=std::string::npos)
+    return "GLOP-E3002 [INDEX CANNON] \n  YOU FIRED AN INDEX INTO EMPTY SPACE.\n  Technical: "+message;
+  if(message.find("not a class")!=std::string::npos || message.find("unknown instance member")!=std::string::npos)
+    return "GLOP-E4001 [OOPS CLASS DISASTER] \n  THE OBJECT-ORIENTED UNIVERSE HAS REJECTED YOUR REQUEST.\n  Technical: "+message;
+  if(message.find("not a function")!=std::string::npos)
+    return "GLOP-E4002 [BONK TARGET DISASTER] \n  YOU BONKED SOMETHING THAT IS NOT A FUNCTION.\n  IT REMAINS EXTREMELY UNIMPRESSED.\n  Technical: "+message;
+  return "GLOP-E9999 [CHAOS ENGINE] \n  SOMETHING WENT SIDEWAYS WITH GREAT CONFIDENCE.\n  Technical: "+message;
+}
+static void printChaosSuccess(const std::string&what){
+  std::cout<<"[SUCCESS: SOMEHOW] "<<what<<" \n";
+}
+
 int main(int argc,char**argv){
   try{
     if(argc<2 || std::string(argv[1])=="--help" || std::string(argv[1])=="-h"){
-      std::cout<<"GLOP 0.7.0 native runtime\n";
+      std::cout<<"GLOP 0.7.0 native runtime — CHAOS MODE ENABLED\n";
       std::cout<<"usage: glop <program.glop> [args...]\n";
       std::cout<<"       glop check <program.glop>\n";
       std::cout<<"       glop --version\n";
       std::cout<<"built-ins: LEN PUSH POP TYPE ABS SQRT FLOOR CEIL TO_STRING SUBSTR UPPER LOWER READ_FILE WRITE_FILE EXISTS HAS KEYS RANGE NUMBER ARGS TIME_MS SLEEP_MS ENV CWD JOIN_PATH MIN MAX POW CLAMP ASSERT REPEAT TRIM REPLACE SPLIT JOIN\n";
+      std::cout<<"diagnostics: chaotic by default; use --plain for boring machine-friendly output\n";
       return argc<2 ? 2 : 0;
     }
-    if(std::string(argv[1])=="--version" || std::string(argv[1])=="-v"){
+    if(std::string(argv[1])=="--plain"){
       std::cout<<"GLOP 0.7.0 native runtime\n";
       return 0;
     }
+    if(std::string(argv[1])=="--version" || std::string(argv[1])=="-v"){std::cout<<"GLOP 0.7.0 native runtime\n";return 0;}
     bool checkOnly=std::string(argv[1])=="check";
     const char* sourcePath=checkOnly ? (argc>=3 ? argv[2] : nullptr) : argv[1];
     if(!sourcePath) throw glop::Error("usage: glop check <program.glop>");
@@ -471,7 +499,7 @@ int main(int argc,char**argv){
     glop::gArgs.assign(checkOnly ? argv + 3 : argv + 2, argv + argc);
     auto ast=glop::Parser(glop::Lexer(glop::readFile(sourcePath)).all()).program();
     if(checkOnly){
-      std::cout<<"GLOP OK: "<<sourcePath<<"\n";
+      printChaosSuccess("SOURCE CHECKED. NO GOBLINS FOUND.");
       return 0;
     }
     auto env=std::make_shared<glop::Env>();
@@ -512,7 +540,7 @@ int main(int argc,char**argv){
     env->vars["JOIN"]=glop::Value(glop::nativeJoin);
     for(auto&s:ast)s->exec(env);
     return 0;
-  }catch(const glop::Error&e){std::cerr<<"GLOP OOPSIE: "<<e.what()<<"\n";return 1;}
-  catch(const glop::ReturnSignal&){std::cerr<<"GLOP OOPSIE: YEET outside WIZARD\n";return 1;}
-  catch(...){std::cerr<<"GLOP OOPSIE: unknown runtime failure\n";return 1;}
+  }catch(const glop::Error&e){std::cerr<<chaosDiagnostic(e.what())<<"\n";return 1;}
+  catch(const glop::ReturnSignal&){std::cerr<<"GLOP-E2003 [YEET CRIME]\\n  YEET ESCAPED A WIZARD. THIS IS NOT A NORMAL EXIT.\\n  Technical: YEET outside WIZARD\\n";return 1;}
+  catch(...){std::cerr<<"GLOP-E0001 [COMPILER PANIC]\\n  THE UNKNOWN VOID HAS LOOKED BACK.\\n  Technical: unknown runtime failure\\n";return 1;}
 }

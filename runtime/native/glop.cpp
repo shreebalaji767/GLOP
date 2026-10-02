@@ -31,7 +31,7 @@ class Lexer {
   std::string s; size_t p=0; int line=1,col=1;
   std::unordered_map<std::string,bool> kw{{"GLOP",1},{"YAP",1},{"SUS",1},{"NAH",1},{"SPIN",1},{"WIZARD",1},{"YEET",1},{"BASED",1},{"CAP",1},{"VOID",1},{"OOPSIE",1},{"TRY",1},{"CATCH",1},{"NOPE",1},{"ZOOM",1},{"BONK",1}};
   char peek(size_t n=0) const { return p+n<s.size()?s[p+n]:'\0'; }
-  char take(){char c=peek();if(!c)return 0;p++;if(c=='\\n'){line++;col=1;}else col++;return c;}
+  char take(){char c=peek();if(!c)return 0;p++;if(c=='\n'){line++;col=1;}else col++;return c;}
 public:
   explicit Lexer(std::string x):s(std::move(x)){}
   std::vector<Token> all(){
@@ -42,29 +42,31 @@ public:
       if(c=='/'&&peek(1)=='/'){while(peek()&&peek()!='\n')take();continue;}
       if(c=='/'&&peek(1)=='*'){take();take();while(peek()&&!(peek()=='*'&&peek(1)=='/'))take();if(!peek())throw Error("unterminated block comment");take();take();continue;}
       int l=line,cc=col;
-      if(std::isalpha((unsigned char)c)||c=='_'){std::string x;while(std::isalnum((unsigned char)peek())||peek()=='_')x+=take();out.push_back({kw.count(x)?ID:ID,x,0,l,cc});continue;}
-      if(std::isdigit((unsigned char)c)){std::string x;while(std::isdigit((unsigned char)peek()))x+=take();if(peek()=='.'){x+=take();while(std::isdigit((unsigned char)peek()))x+=take();}out.push_back({NUM,x,std::stod(x),l,cc});continue;}
-      if(c=='"'||c=='\''||c=='«'){char q=take(),end=q=='«'?'»':q;std::string x;while(peek()&&peek()!=end){if(peek()=='\\'){take();x+=take();}else x+=take();}if(take()!=end)throw Error("unterminated string at "+std::to_string(l)+":"+std::to_string(cc));out.push_back({STR,x,0,l,cc});continue;}
+      if(std::isalpha((unsigned char)c)||c=='_'){std::string x;while(std::isalnum((unsigned char)peek())||peek()=='_')x+=take();out.push_back({Token::ID,x,0,l,cc});continue;}
+      if(std::isdigit((unsigned char)c)){std::string x;while(std::isdigit((unsigned char)peek()))x+=take();if(peek()=='.'){x+=take();while(std::isdigit((unsigned char)peek()))x+=take();}out.push_back({Token::NUM,x,std::stod(x),l,cc});continue;}
+      if(c=='"'||c=='\''){char q=take(),end=q;std::string x;while(peek()&&peek()!=end){if(peek()=='\\'){take();x+=take();}else x+=take();}if(take()!=end)throw Error("unterminated string at "+std::to_string(l)+":"+std::to_string(cc));out.push_back({Token::STR,x,0,l,cc});continue;}
       std::string two;two+=c;two+=peek(1);
-      if(two=="=="||two=="!="||two=="<="||two==">="||two=="&&"||two=="||"||two=="+="||two=="-="||two=="*="||two=="/="){take();take();out.push_back({OP,two,0,l,cc});continue;}
-      if(std::string("+-*/%<>=!").find(c)!=std::string::npos){take();out.push_back({OP,std::string(1,c),0,l,cc});continue;}
-      if(std::string("(){}[],.:;").find(c)!=std::string::npos){take();out.push_back({PUNC,std::string(1,c),0,l,cc});continue;}
+      if(two=="=="||two=="!="||two=="<="||two==">="||two=="&&"||two=="||"||two=="+="||two=="-="||two=="*="||two=="/="){take();take();out.push_back({Token::OP,two,0,l,cc});continue;}
+      if(std::string("+-*/%<>=!").find(c)!=std::string::npos){take();out.push_back({Token::OP,std::string(1,c),0,l,cc});continue;}
+      if(std::string("(){}[],.:;").find(c)!=std::string::npos){take();out.push_back({Token::PUNC,std::string(1,c),0,l,cc});continue;}
       throw Error("unexpected character at "+std::to_string(l)+":"+std::to_string(cc));
     }
-    out.push_back({END,"",0,line,col}); return out;
+    out.push_back({Token::END,"",0,line,col}); return out;
   }
 };
 
 struct Expr;
 struct Stmt;
 struct Function;
+struct Class;
+struct Instance;
 struct Env;
 struct Value {
   using Array=std::vector<Value>;
   using Object=std::unordered_map<std::string,Value>;
-  std::variant<std::monostate,bool,double,std::string,std::shared_ptr<Array>,std::shared_ptr<Object>,std::shared_ptr<Function>,std::function<Value(const std::vector<Value>&)>> v;
+  std::variant<std::monostate,bool,double,std::string,std::shared_ptr<Array>,std::shared_ptr<Object>,std::shared_ptr<Function>,std::shared_ptr<Class>,std::shared_ptr<Instance>,std::function<Value(const std::vector<Value>&)>> v;
   Value():v(std::monostate{}){} Value(bool x):v(x){} Value(double x):v(x){} Value(std::string x):v(std::move(x)){}
-  Value(const char*x):v(std::string(x)){} Value(std::shared_ptr<Array>x):v(std::move(x)){} Value(std::shared_ptr<Object>x):v(std::move(x)){} Value(std::shared_ptr<Function>x):v(std::move(x)){} Value(std::function<Value(const std::vector<Value>&)>x):v(std::move(x)){}
+  Value(const char*x):v(std::string(x)){} Value(std::shared_ptr<Array>x):v(std::move(x)){} Value(std::shared_ptr<Object>x):v(std::move(x)){} Value(std::shared_ptr<Function>x):v(std::move(x)){} Value(std::shared_ptr<Class>x):v(std::move(x)){} Value(std::shared_ptr<Instance>x):v(std::move(x)){} Value(std::function<Value(const std::vector<Value>&)>x):v(std::move(x)){}
 };
 struct ReturnSignal { Value value; };
 struct Expr { virtual ~Expr()=default; virtual Value eval(std::shared_ptr<Env>)=0; };
@@ -78,6 +80,8 @@ static std::string show(const Value&v){
   if(auto p=std::get_if<std::string>(&v.v))return *p;
   if(auto p=std::get_if<std::shared_ptr<Value::Array>>(&v.v)){std::string s="[";for(size_t i=0;i<(*p)->size();i++){if(i)s+=", ";s+=show((*p)->at(i));}return s+"]";}
   if(auto p=std::get_if<std::shared_ptr<Value::Object>>(&v.v))return "[object]";
+  if(std::holds_alternative<std::shared_ptr<Class>>(v.v))return "[class]";
+  if(std::holds_alternative<std::shared_ptr<Instance>>(v.v))return "[instance]";
   if(std::holds_alternative<std::function<Value(const std::vector<Value>&)>>(v.v))return "[native-function]";
   return "[function]";
 }
@@ -103,11 +107,14 @@ struct Binary:Expr{std::string op;std::unique_ptr<Expr>a,b;Value eval(std::share
   if(op=="-")return num(x)-num(y);if(op=="*")return num(x)*num(y);if(op=="/"){auto d=num(y);if(d==0)throw Error("division by zero");return num(x)/d;}if(op=="%")return std::fmod(num(x),num(y));
   if(op=="==")return show(x)==show(y);if(op=="!=")return show(x)!=show(y);if(op=="<")return num(x)<num(y);if(op=="<=")return num(x)<=num(y);if(op==">")return num(x)>num(y);if(op==">=")return num(x)>=num(y);throw Error("unknown operator "+op);
 }};
-struct Member:Expr{std::unique_ptr<Expr>o;std::string k;Value eval(std::shared_ptr<Env>e)override{auto x=o->eval(e);auto p=std::get_if<std::shared_ptr<Value::Object>>(&x.v);if(!p)throw Error("member access requires object");return (*p)->count(k)?(*p)->at(k):Value();}};
+struct Member:Expr{std::unique_ptr<Expr>o;std::string k;Value eval(std::shared_ptr<Env>e)override{auto x=o->eval(e);if(auto ip=std::get_if<std::shared_ptr<Instance>>(&x.v)){auto inst=*ip;if(inst->fields.count(k))return inst->fields.at(k);auto it=inst->klass->methods.find(k);if(it!=inst->klass->methods.end()){auto method=it->second;return std::function<Value(const std::vector<Value>&)>([method,inst](const std::vector<Value>&args){return method->call(args,Value(inst));});}throw Error("unknown instance member: "+k);}auto p=std::get_if<std::shared_ptr<Value::Object>>(&x.v);if(!p)throw Error("member access requires object or instance");return (*p)->count(k)?(*p)->at(k):Value();}};
 struct Index:Expr{std::unique_ptr<Expr>o,i;Value eval(std::shared_ptr<Env>e)override{auto x=o->eval(e),q=i->eval(e);size_t n=(size_t)num(q);if(auto p=std::get_if<std::shared_ptr<Value::Array>>(&x.v)){double d=num(q);if(d<0||std::floor(d)!=d)throw Error("array index must be an integer");if(n>=(*p)->size())throw Error("array index out of range");return (*p)->at(n);}throw Error("index requires array");}};
 
-struct Function {std::vector<std::string>params;std::vector<std::unique_ptr<Stmt>> body;std::shared_ptr<Env>closure;Value call(const std::vector<Value>&args){
-  if(args.size()!=params.size())throw Error("wrong argument count");auto e=std::make_shared<Env>(closure);for(size_t i=0;i<args.size();i++)e->vars[params[i]]=args[i];
+struct Class { std::string name; std::unordered_map<std::string,std::shared_ptr<Function>> methods; std::shared_ptr<Env> closure; };
+struct Instance { std::shared_ptr<Class> klass; std::unordered_map<std::string,Value> fields; };
+
+struct Function {std::vector<std::string>params;std::vector<std::unique_ptr<Stmt>> body;std::shared_ptr<Env>closure;Value call(const std::vector<Value>&args, Value thisValue=Value()){
+  if(args.size()!=params.size())throw Error("wrong argument count");auto e=std::make_shared<Env>(closure);if(!std::holds_alternative<std::monostate>(thisValue.v))e->vars["THIS"]=thisValue;for(size_t i=0;i<args.size();i++)e->vars[params[i]]=args[i];
   try{for(auto&s:body)s->exec(e);}catch(ReturnSignal&r){return r.value;}return Value();
 }};
 struct Call:Expr{std::unique_ptr<Expr>f;std::vector<std::unique_ptr<Expr>>args;Value eval(std::shared_ptr<Env>e)override{auto v=f->eval(e);auto p=std::get_if<std::shared_ptr<Function>>(&v.v);auto nf=std::get_if<std::function<Value(const std::vector<Value>&)>>(&v.v);
@@ -152,9 +159,7 @@ struct TargetAssign:Stmt{
     auto rhs=value->eval(e);
     if(auto n=dynamic_cast<Name*>(target.get())){e->set(n->n,applyAssign(op,e->get(n->n),rhs));return;}
     if(auto m=dynamic_cast<Member*>(target.get())){
-      auto obj=m->o->eval(e);auto p=std::get_if<std::shared_ptr<Value::Object>>(&obj.v);
-      if(!p)throw Error("member assignment requires object");
-      Value old=(*p)->count(m->k)?(*p)->at(m->k):Value();(*p)[m->k]=applyAssign(op,old,rhs);return;
+      auto obj=m->o->eval(e);if(auto ip=std::get_if<std::shared_ptr<Instance>>(&obj.v)){auto inst=*ip;Value old=inst->fields.count(m->k)?inst->fields.at(m->k):Value();inst->fields[m->k]=applyAssign(op,old,rhs);return;}auto p=std::get_if<std::shared_ptr<Value::Object>>(&obj.v);if(!p)throw Error("member assignment requires object or instance");Value old=(*p)->count(m->k)?(*p)->at(m->k):Value();(*p)[m->k]=applyAssign(op,old,rhs);return;
     }
     if(auto q=dynamic_cast<Index*>(target.get())){
       auto obj=q->o->eval(e),idx=q->i->eval(e);auto p=std::get_if<std::shared_ptr<Value::Array>>(&obj.v);
@@ -167,6 +172,9 @@ struct TargetAssign:Stmt{
   }
 };
 struct FnDecl:Stmt{std::string n;std::vector<std::string>p;std::vector<std::unique_ptr<Stmt>>b;void exec(std::shared_ptr<Env>e)override{auto f=std::make_shared<Function>();f->params=p;f->body=std::move(b);f->closure=e;e->vars[n]=f;}};
+struct MethodDef { std::string n; std::vector<std::string> p; std::vector<std::unique_ptr<Stmt>> b; };
+struct ClassDecl:Stmt{std::string n;std::vector<MethodDef>methods;void exec(std::shared_ptr<Env>e)override{auto c=std::make_shared<Class>();c->name=n;c->closure=e;for(auto&d:methods){auto f=std::make_shared<Function>();f->params=d.p;f->body=std::move(d.b);f->closure=e;c->methods[d.n]=f;}e->vars[n]=c;}};
+struct NewExpr:Expr{std::unique_ptr<Expr>klass;std::vector<std::unique_ptr<Expr>>args;Value eval(std::shared_ptr<Env>e)override{auto cv=klass->eval(e);auto cp=std::get_if<std::shared_ptr<Class>>(&cv.v);if(!cp)throw Error("NEW target is not a class");auto inst=std::make_shared<Instance>();inst->klass=*cp;auto it=(*cp)->methods.find("init");std::vector<Value>a;for(auto&x:args)a.push_back(x->eval(e));if(it!=(*cp)->methods.end())it->second->call(a,Value(inst));else if(!a.empty())throw Error("constructor init not found");return inst;}};
 
 class Parser {
  std::vector<Token>t;size_t i=0;
@@ -186,6 +194,7 @@ public:
   if(at("TRY")){take();auto b=block();if(!at("CATCH"))throw Error("TRY requires CATCH");take();auto n=take().text;auto h=block();return std::make_unique<TryCatch>(TryCatch{std::move(b),std::move(h),n});}
   if(at("GLOP"))throw Error("unreachable");
   if(at("WIZARD")){take();auto n=take().text;need("(");std::vector<std::string>p;if(!at(")")){do{p.push_back(take().text);}while(at(",")&&take().text==",");}need(")");auto b=block();return std::make_unique<FnDecl>(FnDecl{n,std::move(p),std::move(b->s)});}
+  if(at("OOPS")){take();auto n=take().text;need("{");std::vector<MethodDef>ms;while(!at("}")){if(!at("WIZARD"))throw Error("OOPS class body accepts WIZARD methods only");take();auto mn=take().text;need("(");std::vector<std::string>p;if(!at(")")){do{p.push_back(take().text);}while(at(",")&&take().text==",");}need(")");auto b=block();ms.push_back(MethodDef{mn,std::move(p),std::move(b->s)});}need("}");return std::make_unique<ClassDecl>(ClassDecl{n,std::move(ms)});}
   if(at("SUS")){take();auto t=expr();auto a=block();std::unique_ptr<Block>b;if(at("NAH")){take();b=block();}return std::make_unique<If>(If{std::move(t),std::move(a),std::move(b)});}
   if(at("SPIN")){take();auto t=expr();auto b=block();return std::make_unique<While>(While{std::move(t),std::move(b)});}
   auto v=expr();if(cur().kind==Token::OP&&std::string("= += -= *= /=").find(cur().text)!=std::string::npos){auto op=take().text;auto x=expr();if(at(";"))take();return std::make_unique<TargetAssign>(TargetAssign{std::move(v),op,std::move(x)});}if(at(";"))take();return std::make_unique<ExprStmt>(ExprStmt{std::move(v)});
@@ -200,6 +209,7 @@ public:
   if(x.kind==Token::STR)return std::make_unique<Literal>(x.text);
   if(x.text=="BASED")return std::make_unique<Literal>(true);if(x.text=="CAP")return std::make_unique<Literal>(false);if(x.text=="VOID")return std::make_unique<Literal>(Value());
   if(x.text=="BONK"){auto f=std::make_unique<Name>(take().text);need("(");auto c=std::make_unique<Call>();c->f=std::move(f);if(!at(")")){do{c->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");return c;}
+  if(x.text=="NEW"){auto n=std::make_unique<NewExpr>();n->klass=std::make_unique<Name>(take().text);need("(");if(!at(")")){do{n->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");return n;}
   if(x.kind==Token::ID)return std::make_unique<Name>(x.text);
   if(x.text=="("){auto a=expr();need(")");return a;}
   if(x.text=="["){auto a=std::make_unique<ArrayExpr>();if(!at("]")){do{a->a.push_back(expr());}while(at(",")&&take().text==",");}need("]");return a;}
@@ -284,6 +294,8 @@ static Value nativeType(const std::vector<Value>& a){
   if(std::holds_alternative<std::string>(v.v)) return "string";
   if(std::holds_alternative<std::shared_ptr<Value::Array>>(v.v)) return "array";
   if(std::holds_alternative<std::shared_ptr<Value::Object>>(v.v)) return "object";
+  if(std::holds_alternative<std::shared_ptr<Class>>(v.v)) return "class";
+  if(std::holds_alternative<std::shared_ptr<Instance>>(v.v)) return "instance";
   return std::holds_alternative<std::function<Value(const std::vector<Value>&)>>(v.v) ? "native-function" : "function";
 }
 static Value nativeAbs(const std::vector<Value>& a){ if(a.size()!=1) throw Error("ABS expects 1 argument"); return std::fabs(num(a[0])); }

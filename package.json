@@ -7,7 +7,7 @@
     "glop": "./src/cli.js"
   },
   "scripts": {
-    "test": "node tests/run-tests.js && node tests/semantic-tests.js && node tests/bytecode-tests.js && node tests/module-tests.js && node tests/disassembler-tests.js",
+    "test": "node tests/run-tests.js && node tests/semantic-tests.js && node tests/bytecode-tests.js && node tests/module-tests.js && node tests/disassembler-tests.js && node tests/stdlib-tests.js",
     "run": "node src/cli.js run",
     "compile": "node src/cli.js compile",
     "build": "node src/cli.js build"

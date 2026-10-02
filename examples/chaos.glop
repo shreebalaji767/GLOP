@@ -1,0 +1,11 @@
+GLOP numbers = [10, 20, 30]
+YAP numbers[1]
+
+GLOP person = {name: «RAVI», age: 25}
+YAP person.name
+
+GLOP x = 0
+SPIN x < 3 {
+  YAP x
+  x += 1
+}

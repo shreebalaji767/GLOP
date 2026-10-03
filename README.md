@@ -332,3 +332,48 @@ YAP BONK add(count, 20)
 ```
 
 Known types are checked before execution; `ANY` leaves a value dynamically typed.
+
+
+## GLOP 0.22 — developer experience upgrade
+
+GLOP 0.22 focuses on making the toolchain easier to diagnose and safer to use.
+
+### CLI health check
+
+Run:
+
+```bash
+node src/cli.js doctor
+```
+
+The doctor checks the Node.js requirement and the core lexer, parser, bytecode VM, package manifest, and native runtime source. It exits non-zero if a required component is missing.
+
+### CLI reliability
+
+The debug and trace paths now keep source text in an explicit module-scoped variable, so diagnostics can safely show source context instead of relying on an undeclared variable.
+
+### Native version consistency
+
+The native executable now reports the same GLOP release version as the JavaScript toolchain: **0.22.0**.
+
+### Test coverage
+
+The default `npm test` suite now includes CLI smoke tests for:
+
+- `--version`
+- `--help`
+- `doctor`
+
+This makes the command-line surface part of the normal regression suite.
+
+## Upgrade direction
+
+The next language-level milestones can build on the existing compiler/VM foundation:
+
+1. first-class package/dependency management
+2. richer source maps and debugger stepping
+3. a formatter and linter
+4. native bytecode execution parity with the JavaScript VM
+5. a standard-library documentation site
+6. a self-hosted/native compiler
+7. an official GLOP playground

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import path from "node:path";
 import { lex } from "./lexer.js";
 import { parse } from "./parser.js";
 import { analyze } from "./semantic.js";
@@ -12,10 +13,11 @@ import { bundleModules } from "./module-bundler.js";
 import { disassemble } from "./disassembler.js";
 import { verifyBytecode } from "./verifier.js";
 import { inspect } from "./inspect.js";
+import { findProject, readProject, initProject, addDependency, removeDependency, installProject } from "./project.js";
 
-const [, , cmd, file, ...rest] = process.argv;
+let [, , cmd, file, ...rest] = process.argv;
 
-const VERSION = "0.23.0";
+const VERSION = "0.24.0";
 let source = "";
 
 const usage = `GLOP ${VERSION}
@@ -41,6 +43,88 @@ if (VERSION_FLAGS.has(cmd)) {
 if (HELP_FLAGS.has(cmd)) {
   console.log(usage);
   process.exit(0);
+}
+
+if (cmd === "init") {
+  try {
+    const created = initProject(file || ".");
+    console.log("GLOP PROJECT CREATED: " + created.root);
+    console.log("  manifest: " + path.join(created.root, "glop.toml"));
+    console.log("  entry:    " + path.join(created.root, created.manifest.package.entry));
+    process.exit(0);
+  } catch (e) { console.error("GLOP INIT ERROR: " + e.message); process.exit(1); }
+}
+
+if (cmd === "add") {
+  try {
+    const name = file;
+    const spec = rest[0];
+    if (!name || !spec) throw new Error("usage: glop add <name> <path>");
+    const root = findProject() || process.cwd();
+    const saved = addDependency(root, name, spec);
+    installProject(root);
+    console.log(`GLOP DEPENDENCY ADDED: ${name} -> ${saved}`);
+    process.exit(0);
+  } catch (e) { console.error("GLOP ADD ERROR: " + e.message); process.exit(1); }
+}
+
+if (cmd === "remove") {
+  try {
+    if (!file) throw new Error("usage: glop remove <name>");
+    const root = findProject();
+    if (!root) throw new Error("no glop.toml found");
+    removeDependency(root, file);
+    installProject(root);
+    console.log("GLOP DEPENDENCY REMOVED: " + file);
+    process.exit(0);
+  } catch (e) { console.error("GLOP REMOVE ERROR: " + e.message); process.exit(1); }
+}
+
+if (cmd === "install") {
+  try {
+    const root = findProject();
+    if (!root) throw new Error("no glop.toml found");
+    const lock = installProject(root);
+    console.log("GLOP INSTALL COMPLETE: " + Object.keys(lock.dependencies).length + " dependency(ies)");
+    process.exit(0);
+  } catch (e) { console.error("GLOP INSTALL ERROR: " + e.message); process.exit(1); }
+}
+
+if (cmd === "project") {
+  try {
+    const root = findProject();
+    if (!root) throw new Error("no glop.toml found");
+    const project = readProject(root);
+    console.log(JSON.stringify({ root: project.root, package: project.manifest.package, dependencies: project.manifest.dependencies }, null, 2));
+    process.exit(0);
+  } catch (e) { console.error("GLOP PROJECT ERROR: " + e.message); process.exit(1); }
+}
+
+if (cmd === "test") {
+  try {
+    const root = findProject();
+    if (!root) throw new Error("no glop.toml found");
+    const project = readProject(root);
+    const testsDir = path.join(root, "tests");
+    if (!fs.existsSync(testsDir)) throw new Error("tests directory not found");
+    const files = fs.readdirSync(testsDir).filter(x => x.endsWith(".glop")).sort();
+    if (!files.length) { console.log("GLOP TEST: no .glop tests found"); process.exit(0); }
+    const { ModuleLoader } = await import("./module-loader.js");
+    for (const name of files) {
+      console.log("GLOP TEST: " + name);
+      new ModuleLoader({ output: console.log }).runEntry(path.join(testsDir, name));
+    }
+    console.log("GLOP TESTS PASSED: " + files.length);
+    process.exit(0);
+  } catch (e) { console.error("GLOP TEST ERROR: " + e.message); process.exit(1); }
+}
+
+if (!file && ["run", "check", "build", "compile", "debug", "dump", "tokens", "trace"].includes(cmd)) {
+  const root = findProject();
+  if (root) {
+    const project = readProject(root);
+    file = path.join(root, project.manifest.package.entry);
+  }
 }
 
 if (cmd === "repl") {

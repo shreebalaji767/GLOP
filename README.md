@@ -1,4 +1,4 @@
-# GLOP 0.20
+# GLOP 0.21
 
 GLOP is a real programming language with ridiculous keywords and a serious compiler.
 
@@ -20,7 +20,7 @@ Output: \`30\`
 
 ## Keywords
 
-GLOP=variable, YAP=print, SUS=if, NAH=else, SPIN=while, WIZARD=function,
+GLOP=variable, YAP=print, SUS=if, NAH=else, SPIN=while, WIZARD=function, CLASS=class, INIT=constructor, EXTENDS=inheritance, NEW=instance, THIS=receiver,
 BONK=call, YEET=return, BASED=true, CAP=false, VOID=null, OOPSIE=throw,
 TRY/CATCH=errors, NOPE=break, ZOOM=continue, STEAL=import, FLEX=export.
 
@@ -300,3 +300,35 @@ YAP PAD_LEFT(«42», 5, «0»)
 ```
 
 The collection helpers return new arrays, so the original array stays available for further chaos.
+
+
+## GLOP 0.21 — classes, inheritance, and types
+
+Classes now support constructors, methods, instances, and inheritance:
+
+```glop
+CLASS Animal {
+    INIT(name) { THIS.name = name }
+    WIZARD speak() { YEET THIS.name }
+}
+
+CLASS Dog EXTENDS Animal {
+    WIZARD bark() { YEET «BORK» }
+}
+
+GLOP dog = NEW Dog(«BOB»)
+YAP BONK dog.speak()
+YAP BONK dog.bark()
+```
+
+GLOP also has optional gradual type annotations:
+
+```glop
+GLOP count:NUMBER = 10
+WIZARD add(a:NUMBER, b:NUMBER):NUMBER {
+    YEET a + b
+}
+YAP BONK add(count, 20)
+```
+
+Known types are checked before execution; `ANY` leaves a value dynamically typed.

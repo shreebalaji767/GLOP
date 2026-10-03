@@ -284,7 +284,7 @@ export class Parser{
       throw new GlopParseError("Expected object property name",this.peek());
      const key=this.expect("identifier","Expected object property name").value;
      this.expect(":","Expected : after object property name");
-     if(properties.length>=this.maxObjectProperties)throw new GlopParseError(`Maximum object property count (${this.maxObjectProperties}) exceeded`,this.peek(),"PARSE_LIMIT");     properties.push({key,value:this.expression()});
+     if(properties.length>=this.maxObjectProperties)throw new GlopParseError(`Maximum object property count (${this.maxObjectProperties}) exceeded`,this.peek(),"PARSE_LIMIT");     const value=this.expression(); properties.push({key,value}); if(value.type==="FunctionExpr")value.isMethod=true;
      if(this.match("}"))break;
      this.expect(",","Expected , or } after object property");
      if(this.match("}"))break;

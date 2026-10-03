@@ -1,4 +1,4 @@
-# GLOP 0.16
+# GLOP 0.17
 
 GLOP is a real programming language with ridiculous keywords and a serious compiler.
 
@@ -36,7 +36,7 @@ node src/cli.js build examples/hello.glop
 ./glop-runtime examples/hello.gbc
 \`\`\`
 
-GLOP 0.16 adds a consistent JavaScript CLI version/help interface and keeps the GLOP Inspector plus debugger tooling for source-aware breakpoints, stepping diagnostics, locals, and call-stack reporting. It also retains VM tracing, bytecode verification, the JavaScript/native standard library surface, modules, closures, exceptions, a persistent REPL, GBC3 bytecode with GBC2 compatibility, a disassembler, source locations, and native runtime tooling.
+GLOP 0.17 adds a consistent JavaScript CLI version/help interface and keeps the GLOP Inspector plus debugger tooling for source-aware breakpoints, stepping diagnostics, locals, and call-stack reporting. It also retains VM tracing, bytecode verification, the JavaScript/native standard library surface, modules, closures, exceptions, a persistent REPL, GBC3 bytecode with GBC2 compatibility, a disassembler, source locations, and native runtime tooling.
 
 
 ## Dependency-free native GLOP
@@ -211,3 +211,28 @@ Debugger output includes the current function, source line/column, bytecode offs
 
 
 GLOP bytecode now carries source line/column metadata. The VM trace reports the function, source position, bytecode offset, opcode, operand, and stack depth. `GBC3` is the current format; the reader remains compatible with legacy `GBC2` files.
+
+
+## GLOP 0.17 language polish
+
+The lexer now supports:
+- block comments: `/* ... */`
+- scientific notation such as `1e3`, `2.5E-4`
+
+The JavaScript standard library now also includes:
+- `ROUND(x)`
+- `RANDOM(max)`
+- `JSON_PARSE(text)`
+- `JSON_STRINGIFY(value, indent)`
+- `IS_NAN(x)`
+- `IS_FINITE(x)`
+
+Example:
+
+```glop
+/* The computer has been warned. */
+GLOP payload = JSON_PARSE(«{"name":"GLOP","power":100}»)
+YAP payload.name
+YAP ROUND(3.7)
+YAP JSON_STRINGIFY(payload, 2)
+```

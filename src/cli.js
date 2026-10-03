@@ -31,7 +31,26 @@ const usage = `GLOP 0.14.0
   glop check <file.glop>
   glop build <file.glop> [-o out.gbc]
   glop tokens <file.glop>
-  glop dump <file.glop|file.gbc>\n  glop trace <file.glop|file.gbc>\n  glop verify <file.gbc>\n  glop inspect <file.glop|file.gbc> [--json]`;
+  glop dump <file.glop|file.gbc>\n  glop trace <file.glop|file.gbc>\n  glop verify <file.gbc>\n  glop inspect <file.glop|file.gbc> [--json]\n  glop debug <file.glop|file.gbc> [--break N] [--step]`;
+
+if (cmd === "debug") {
+  if (!file) { console.log(usage); process.exit(1); }
+  const breaks=[]; for(let i=0;i<rest.length;i++) if(rest[i]==="--break"){const n=Number(rest[++i]);if(!Number.isInteger(n))throw new Error("--break expects a line number");breaks.push(n);}
+  const step=rest.includes("--step");
+  try {
+    let bc;
+    if(file.toLowerCase().endsWith(".gbc")) bc=readGBC(file);
+    else {
+      source=fs.readFileSync(file,"utf8");
+      const a=parse(lex(source));
+      const program=a.body.some(s=>s.type==="ImportDecl"||s.type==="ExportDecl") ? bundleModules(file).ast : a;
+      analyze(program); bc=compileBytecode(program);
+    }
+    verifyBytecode(bc);
+    runBytecode(bc,{output:console.log,breakpoints:breaks,debugStep:step,debugOutput:console.error});
+    process.exit(0);
+  } catch(e) { console.error("GLOP DEBUGGER ERROR: "+e.message); process.exit(1); }
+}
 
 if (cmd === "inspect") {
   if (!file) { console.log(usage); process.exit(1); }

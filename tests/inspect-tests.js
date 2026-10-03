@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import { inspect, formatInspection } from "../src/inspect.js";
+const result=inspect("examples/hello.glop",{output:()=>{}});
+assert.equal(result.tool,"GLOP INSPECTOR");
+assert.equal(result.version,"0.14.0");
+assert.equal(result.bytecode.verified,true);
+assert.ok(result.tokens>0);
+assert.ok(result.astNodes>0);
+assert.ok(result.bytecode.instructions>0);
+assert.match(formatInspection(result),/GLOP INSPECTOR 0\.14/);
+console.log("GLOP INSPECTOR TESTS PASSED.");

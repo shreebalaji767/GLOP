@@ -50,7 +50,7 @@ export class BytecodeCompiler {
       case"ImportDecl":case"ExportDecl":break;
       case"VarDecl":this.expr(n.value);if(this.locals){const i=this.locals.size;this.locals.set(n.name,i);this.b.emit(OP.STORE_LOCAL,i)}else this.b.emit(OP.STORE_GLOBAL,n.name);break;
       case"FunctionDecl":this.defineFunction(n);break;
-      case"ClassDecl":{ for(const m of n.methods){this.b.emit(OP.CONST,this.b.constant(m.name));const chunk=this.compileFunction(m),index=this.b.addFunction(chunk);this.b.emit(OP.MAKE_CLOSURE,index);} this.b.emit(OP.MAKE_CLASS,n.methods.length); if(this.locals){const i=this.locals.size;this.locals.set(n.name,i);this.b.emit(OP.STORE_LOCAL,i)}else this.b.emit(OP.STORE_GLOBAL,n.name);break;}
+      case"ClassDecl":{ if(n.parent)this.b.emit(OP.LOAD_GLOBAL,n.parent);else this.b.emit(OP.CONST,this.b.constant(null)); for(const m of n.methods){this.b.emit(OP.CONST,this.b.constant(m.name));const chunk=this.compileFunction(m),index=this.b.addFunction(chunk);this.b.emit(OP.MAKE_CLOSURE,index);} this.b.emit(OP.MAKE_CLASS,n.methods.length); if(this.locals){const i=this.locals.size;this.locals.set(n.name,i);this.b.emit(OP.STORE_LOCAL,i)}else this.b.emit(OP.STORE_GLOBAL,n.name);break;}
       case"Print":this.expr(n.expression);this.b.emit(OP.PRINT);break;
       case"ExpressionStatement":this.expr(n.expression);this.b.emit(OP.POP);break;
       case"Return":this.expr(n.value);this.b.emit(OP.RETURN);break;

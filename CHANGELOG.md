@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.21.0 — Classes, inheritance, and gradual types
+
+- `CLASS` declarations and `INIT` constructors.
+- `NEW` instance creation and `THIS` receiver binding.
+- `EXTENDS` inheritance with inherited methods and constructors.
+- Optional `NUMBER`, `STRING`, `BOOLEAN`, `ARRAY`, `OBJECT`, `FUNCTION`, `ANY`, and `VOID` annotations.
+- Compile-time checking of annotated variables, parameters, returns, and calls.
+- Bytecode verifier updated for class creation stack effects.
+- JavaScript compiler updated for class inheritance.
+- Regression tests for inheritance, inherited constructors, and type errors.
+
+
 ## 0.21.0 — Classes arrive
 
 - Added `CLASS` declarations.

@@ -390,3 +390,90 @@ glop lint program.glop
 ```
 
 The formatter parses source and emits a normalized, readable layout. The linter performs lightweight static checks for suspicious undefined identifiers without replacing the stronger semantic analyzer. Both commands are dependency-free and run through the GLOP CLI.
+
+
+## GLOP 0.24 — project system and local packages
+
+GLOP now has a real project workflow instead of requiring every program to be launched by hand.
+
+Create a project:
+
+```bash
+glop init
+```
+
+This creates:
+
+```text
+glop.toml
+glop.lock
+main.glop
+tests/
+```
+
+Run the project entry point:
+
+```bash
+glop run
+```
+
+Check the complete project:
+
+```bash
+glop check
+```
+
+Inspect project metadata:
+
+```bash
+glop project
+```
+
+### Local dependencies
+
+GLOP 0.24 intentionally starts with deterministic local path dependencies rather than pretending to have a remote registry.
+
+```bash
+glop add utilities ../utilities
+glop install
+glop remove utilities
+```
+
+A manifest looks like:
+
+```toml
+[package]
+name = "my-chaos"
+version = "0.1.0"
+entry = "main.glop"
+
+[dependencies]
+utilities = "../utilities"
+```
+
+`glop.lock` records the resolved local paths so project state is inspectable and repeatable.
+
+### Project tests
+
+Put executable `.glop` tests in `tests/` and run:
+
+```bash
+glop test
+```
+
+Every test file is executed through the normal GLOP module loader, so project tests use the same language runtime as applications.
+
+### 0.24 CLI
+
+```text
+glop init [directory]
+glop add <name> <path>
+glop remove <name>
+glop install
+glop test
+glop project
+```
+
+The project manager is dependency-free, uses a small explicit TOML subset for `glop.toml`, validates local dependencies, and keeps a deterministic lockfile.
+
+The native runtime version is synchronized with the JavaScript toolchain at **0.24.0**.

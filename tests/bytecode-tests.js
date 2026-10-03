@@ -25,6 +25,8 @@ assert.deepEqual(execute("YAP CONTAINS(«banana»,«nan») YAP STARTS_WITH(«GLO
 assert.deepEqual(execute("GLOP dog={name:«BOB»,bark:WIZARD(){ YEET THIS.name }} YAP BONK dog.bark()").output,["BOB"]);
 assert.deepEqual(execute("GLOP dog={name:«BOB»,say:WIZARD(word){ YEET THIS.name+word }} YAP BONK dog.say(«! »)").output,["BOB! "]);
 assert.deepEqual(execute("GLOP dog={name:«BOB»,make:WIZARD(){ WIZARD inner(){ YEET THIS.name } YEET inner }} GLOP f=BONK dog.make() YAP BONK f()").output,["BOB"]);
+assert.deepEqual(execute("CLASS Dog { INIT(name){ THIS.name=name } WIZARD bark(){ YEET «BORK »+THIS.name } } GLOP dog=NEW Dog(«BOB») YAP BONK dog.bark()").output,["BORK BOB"]);
+assert.deepEqual(execute("CLASS Box { INIT(x){ THIS.x=x } WIZARD add(y){ THIS.x=THIS.x+y YEET THIS.x } } GLOP b=NEW Box(10) YAP BONK b.add(5) YAP BONK b.add(7)").output,[15,22]);
 assert.deepEqual(execute("WIZARD add(a,b){ YEET a+b } YAP BONK add(10,20)").output,[30]);
 assert.deepEqual(execute("GLOP add=WIZARD(a,b){ YEET a+b } YAP BONK add(10,20)").output,[30]);
 assert.deepEqual(execute("GLOP make=WIZARD(x){ WIZARD inner(){ YEET x*2 } YEET inner } GLOP f=BONK make(21) YAP BONK f()").output,[42]);

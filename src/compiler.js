@@ -11,7 +11,7 @@ export class Compiler{
  case"If":return`if(${this.expr(n.test)}){\n${ind(n.consequent.map(x=>this.statement(x)).join("\n"))}\n}`+(n.alternate?`else{\n${ind(n.alternate.map(x=>this.statement(x)).join("\n"))}\n}`:"");
  case"While":return`while(${this.expr(n.test)}){\n${ind(n.body.map(x=>this.statement(x)).join("\n"))}\n}`;
  case"FunctionDecl":return`function ${n.name}(${n.params.join(",")}){\n${ind(n.body.map(x=>this.statement(x)).join("\n"))}\n}`;
- case"ClassDecl":return`class ${n.name}{\n${ind(n.methods.map(m=>m.isInitializer?`constructor(${m.params.join(",")}){\n${ind(m.body.map(x=>this.statement(x)).join("\n"),2)}\n}`:`${m.name}(${m.params.join(",")}){\n${ind(m.body.map(x=>this.statement(x)).join("\n"),2)}\n}`).join("\n"))}\n}`;
+ case"ClassDecl":return`class ${n.name}${n.parent?` extends ${n.parent}`:""}{\n${ind(n.methods.map(m=>m.isInitializer?`constructor(${m.params.join(",")}){\n${ind(m.body.map(x=>this.statement(x)).join("\n"),2)}\n}`:`${m.name}(${m.params.join(",")}){\n${ind(m.body.map(x=>this.statement(x)).join("\n"),2)}\n}`).join("\n"))}\n}`;
  case"Return":return`return ${this.expr(n.value)};`;
  case"Throw":return`throw ${this.expr(n.value)};`;
  case"TryCatch":return`try{\n${ind(n.tryBody.map(x=>this.statement(x)).join("\n"))}\n}catch(${n.param}){\n${ind(n.catchBody.map(x=>this.statement(x)).join("\n"))}\n}`;

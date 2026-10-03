@@ -69,7 +69,7 @@ function stackDelta(ins){
     case OP.CALL:return -ins.arg;
     case OP.CALL_METHOD:return -(ins.arg+1);
     case OP.NEW:return -ins.arg;
-    case OP.MAKE_CLASS:return 1-(ins.arg*2);
+    case OP.MAKE_CLASS:return -(ins.arg*2);
     case OP.ADD:
     case OP.SUB:
     case OP.MUL:

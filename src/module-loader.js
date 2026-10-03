@@ -4,6 +4,7 @@ import { lex } from "./lexer.js";
 import { parse } from "./parser.js";
 import { analyze } from "./semantic.js";
 import { compileBytecode } from "./bytecode-compiler.js";
+import { findProject, readProject } from "./project.js";
 import { VM } from "./vm.js";
 
 export class GlopModuleError extends Error {
@@ -14,9 +15,21 @@ export class ModuleLoader {
   constructor({output=console.log}={}){this.output=output;this.cache=new Map();this.loading=[]}
   resolve(specifier,fromFile){
     if(!specifier||typeof specifier!=="string")throw new GlopModuleError("empty module path","MODULE_PATH");
-    if(!specifier.startsWith("./")&&!specifier.startsWith("../")&&!path.isAbsolute(specifier))
-      throw new GlopModuleError(`only relative module paths are supported: ${specifier}`,"MODULE_PATH");
-    let resolved=path.resolve(path.dirname(fromFile),specifier);
+    let resolved;
+    if(!specifier.startsWith("./")&&!specifier.startsWith("../")&&!path.isAbsolute(specifier)) {
+      const root = findProject(path.dirname(fromFile));
+      if (!root) throw new GlopModuleError(`package ${specifier} requires a glop.toml project`,"MODULE_PATH");
+      const project = readProject(root);
+      const dependency = project.manifest.dependencies?.[specifier];
+      if (!dependency) throw new GlopModuleError(`unknown package dependency: ${specifier}`,"DEPENDENCY_NOT_FOUND");
+      resolved = path.resolve(root, dependency);
+      if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+        const depProject = readProject(resolved);
+        resolved = path.resolve(resolved, depProject.manifest.package.entry);
+      }
+    } else {
+      resolved=path.resolve(path.dirname(fromFile),specifier);
+    }
     if(!path.extname(resolved))resolved+=".glop";
     resolved=path.normalize(resolved);
     if(!fs.existsSync(resolved)||!fs.statSync(resolved).isFile())

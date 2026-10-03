@@ -11,7 +11,7 @@ export class BytecodeCompiler {
 
   compileFunction(n) {
     const previous=this.b, previousLocals=this.locals, previousLoops=this.loopContexts;
-    this.b=new BytecodeBuilder(); this.locals=new Map(n.params.map((name,i)=>[name,i]));
+    this.b=new BytecodeBuilder(); this.locals=new Map([["THIS",0],...n.params.map((name,i)=>[name,i+1])]);
     for(const s of n.body) if(s.type==="FunctionDecl"&&!this.locals.has(s.name)) this.locals.set(s.name,this.locals.size);
     this.loopContexts=[]; const context={locals:this.locals,freeNames:[],freeMap:new Map()}; this.contexts.push(context);
     for(const s of n.body) this.statement(s);
@@ -125,7 +125,7 @@ export class BytecodeCompiler {
         const op={"+":OP.ADD,"-":OP.SUB,"*":OP.MUL,"/":OP.DIV,"%":OP.MOD,"==":OP.EQ,"!=":OP.NE,"<":OP.LT,"<=":OP.LTE,">":OP.GT,">=":OP.GTE}[n.op];
         if(!op)throw new Error("Unsupported binary operator: "+n.op);this.b.emit(op);break;
       }
-      case"Call":this.expr(n.callee);for(const arg of n.args)this.expr(arg);this.b.emit(OP.CALL,n.args.length);break;\n      case"FunctionExpr":{const chunk=this.compileFunction(n),index=this.b.addFunction(chunk);this.b.emit(OP.MAKE_CLOSURE,index);break;}
+      case"Call":{if(n.callee.type==="Member"){this.expr(n.callee.object);this.b.emit(OP.CONST,this.b.constant(n.callee.property));for(const arg of n.args)this.expr(arg);this.b.emit(OP.CALL_METHOD,n.args.length);}else{this.expr(n.callee);for(const arg of n.args)this.expr(arg);this.b.emit(OP.CALL,n.args.length);}break;}\n      case"FunctionExpr":{const chunk=this.compileFunction(n),index=this.b.addFunction(chunk);this.b.emit(OP.MAKE_CLOSURE,index);break;}
       case"Array":for(const e of n.elements)this.expr(e);this.b.emit(OP.MAKE_ARRAY,n.elements.length);break;
       case"Object":for(const p of n.properties){this.b.emit(OP.CONST,this.b.constant(p.key));this.expr(p.value)}this.b.emit(OP.MAKE_OBJECT,n.properties.length);break;
       case"Index":this.expr(n.object);this.expr(n.index);this.b.emit(OP.GET_INDEX);break;

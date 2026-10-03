@@ -377,3 +377,16 @@ The next language-level milestones can build on the existing compiler/VM foundat
 5. a standard-library documentation site
 6. a self-hosted/native compiler
 7. an official GLOP playground
+
+
+## GLOP 0.23 — formatter and linter
+
+GLOP now includes two developer tools:
+
+```bash
+glop fmt program.glop
+glop fmt program.glop -o formatted.glop
+glop lint program.glop
+```
+
+The formatter parses source and emits a normalized, readable layout. The linter performs lightweight static checks for suspicious undefined identifiers without replacing the stronger semantic analyzer. Both commands are dependency-free and run through the GLOP CLI.

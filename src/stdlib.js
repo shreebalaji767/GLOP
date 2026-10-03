@@ -42,5 +42,16 @@ export const GLOP_STDLIB=Object.freeze({
   JSON_PARSE(a){need(1,a);return JSON.parse(str(a[0],"JSON_PARSE"))},
   JSON_STRINGIFY(a){if(a.length<1||a.length>2)throw new Error("JSON_STRINGIFY expects 1 or 2 arguments");return JSON.stringify(a[0],null,a.length===2?num(a[1],"JSON_STRINGIFY"):0)},
   IS_NAN(a){need(1,a);return typeof a[0]==="number"&&Number.isNaN(a[0])},
-  IS_FINITE(a){need(1,a);return typeof a[0]==="number"&&Number.isFinite(a[0])}
+  IS_FINITE(a){need(1,a);return typeof a[0]==="number"&&Number.isFinite(a[0])},
+  INSTANCEOF(a){need(2,a);const x=a[0],name=str(a[1],"INSTANCEOF");if(name==="array")return Array.isArray(x);if(name==="null")return x===null;if(name==="object")return x!==null&&typeof x==="object"&&!Array.isArray(x);return typeof x===name},
+  SUM(a){need(1,a);if(!Array.isArray(a[0]))throw new Error("SUM expects an array");return a[0].reduce((s,x)=>s+num(x,"SUM"),0)},
+  AVG(a){need(1,a);if(!Array.isArray(a[0])||!a[0].length)throw new Error("AVG expects a non-empty array");return a[0].reduce((s,x)=>s+num(x,"AVG"),0)/a[0].length},
+  SORT(a){need(1,a);if(!Array.isArray(a[0]))throw new Error("SORT expects an array");return [...a[0]].sort((x,y)=>x<y?-1:x>y?1:0)},
+  REVERSE(a){need(1,a);if(Array.isArray(a[0]))return [...a[0]].reverse();return str(a[0],"REVERSE").split("").reverse().join("")},
+  UNIQUE(a){need(1,a);if(!Array.isArray(a[0]))throw new Error("UNIQUE expects an array");return [...new Set(a[0])]},
+  CONTAINS(a){need(2,a);const x=a[0];if(Array.isArray(x))return x.includes(a[1]);return str(x,"CONTAINS").includes(str(a[1],"CONTAINS"))},
+  STARTS_WITH(a){need(2,a);return str(a[0],"STARTS_WITH").startsWith(str(a[1],"STARTS_WITH"))},
+  ENDS_WITH(a){need(2,a);return str(a[0],"ENDS_WITH").endsWith(str(a[1],"ENDS_WITH"))},
+  PAD_LEFT(a){need(3,a);return str(a[0],"PAD_LEFT").padStart(num(a[1],"PAD_LEFT"),str(a[2],"PAD_LEFT"))},
+  PAD_RIGHT(a){need(3,a);return str(a[0],"PAD_RIGHT").padEnd(num(a[1],"PAD_RIGHT"),str(a[2],"PAD_RIGHT"))}
 });

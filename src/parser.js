@@ -90,6 +90,20 @@ export class Parser{
    const params=this.finishParameterList();
    return node("FunctionDecl",{name,params,body:this.block()});
   }
+  if(this.match("CLASS")){
+   const name=this.expect("identifier","Expected class name").value;
+   this.expect("{","Expected { after class name");
+   const methods=[];
+   while(!this.check("}")&&!this.check("eof")){
+    const kind=this.match("INIT")?"INIT":(this.match("WIZARD")?"WIZARD":null);
+    if(!kind)throw new GlopParseError("Expected INIT or WIZARD inside CLASS",this.peek());
+    const methodName=kind==="INIT"?"INIT":this.expect("identifier","Expected method name").value;
+    const params=this.finishParameterList();
+    methods.push(node("FunctionExpr",{name:methodName,params,body:this.block(),isMethod:true,isInitializer:kind==="INIT"}));
+   }
+   this.expect("}","Expected } to close class");
+   return node("ClassDecl",{name,methods});
+  }
 
   if(this.match("YEET")){
    const value=this.check("}")?node("Literal",{value:null}):this.expression();
@@ -240,6 +254,7 @@ export class Parser{
    const params=this.finishParameterList();
    return node("FunctionExpr",{name:"<anonymous>",params,body:this.block()});
   }\n  if(this.match("THIS"))return node("Identifier",{name:"THIS"});
+  if(this.match("NEW")){ const callee=this.finishCallee(); return node("New",{callee,args:this.finishCall(node("Identifier",{name:"__NEW__"})).args}); }
   if(this.match("BASED"))return node("Literal",{value:true});
   if(this.match("CAP"))return node("Literal",{value:false});
   if(this.match("VOID"))return node("Literal",{value:null});

@@ -137,7 +137,7 @@ export class Parser{
   if(this.check(")")){this.advance();return params}
   while(true){
    if(this.check(",")||this.check("eof"))throw new GlopParseError("Expected parameter",this.peek());
-   if(params.length>=this.maxParameters)throw new GlopParseError(`Maximum parameter count (${this.maxParameters}) exceeded`,this.peek(),"PARSE_LIMIT");\n   params.push(this.expect("identifier","Expected parameter name").value);
+   if(params.length>=this.maxParameters)throw new GlopParseError(`Maximum parameter count (${this.maxParameters}) exceeded`,this.peek(),"PARSE_LIMIT");   params.push(this.expect("identifier","Expected parameter name").value);
    if(this.match(")"))break;
    this.expect(",","Expected , or ) after parameter");
    if(this.check(")")){this.advance();break}
@@ -194,7 +194,7 @@ export class Parser{
    if(this.check(",")||this.check(")")||this.check("eof"))
     throw new GlopParseError("Expected expression for call argument",this.peek());
 
-   if(args.length>=this.maxCallArgs)throw new GlopParseError(`Maximum call argument count (${this.maxCallArgs}) exceeded`,this.peek(),"PARSE_LIMIT");\n   args.push(this.expression());
+   if(args.length>=this.maxCallArgs)throw new GlopParseError(`Maximum call argument count (${this.maxCallArgs}) exceeded`,this.peek(),"PARSE_LIMIT");   args.push(this.expression());
 
    if(this.match(")"))break;
    this.expect(",","Expected , or ) after call argument");
@@ -261,7 +261,7 @@ export class Parser{
     while(true){
      if(this.check(",")||this.check("]")||this.check("eof"))
       throw new GlopParseError("Expected array element",this.peek());
-     if(elements.length>=this.maxArrayElements)throw new GlopParseError(`Maximum array element count (${this.maxArrayElements}) exceeded`,this.peek(),"PARSE_LIMIT");\n     elements.push(this.expression());
+     if(elements.length>=this.maxArrayElements)throw new GlopParseError(`Maximum array element count (${this.maxArrayElements}) exceeded`,this.peek(),"PARSE_LIMIT");     elements.push(this.expression());
      if(this.match("]"))break;
      this.expect(",","Expected , or ] after array element");
      if(this.match("]"))break;
@@ -280,7 +280,7 @@ export class Parser{
       throw new GlopParseError("Expected object property name",this.peek());
      const key=this.expect("identifier","Expected object property name").value;
      this.expect(":","Expected : after object property name");
-     if(properties.length>=this.maxObjectProperties)throw new GlopParseError(`Maximum object property count (${this.maxObjectProperties}) exceeded`,this.peek(),"PARSE_LIMIT");\n     properties.push({key,value:this.expression()});
+     if(properties.length>=this.maxObjectProperties)throw new GlopParseError(`Maximum object property count (${this.maxObjectProperties}) exceeded`,this.peek(),"PARSE_LIMIT");     properties.push({key,value:this.expression()});
      if(this.match("}"))break;
      this.expect(",","Expected , or } after object property");
      if(this.match("}"))break;

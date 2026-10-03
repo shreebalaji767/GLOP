@@ -15,7 +15,7 @@ import { inspect } from "./inspect.js";
 
 const [, , cmd, file, ...rest] = process.argv;
 
-const VERSION = "0.19.0";
+const VERSION = "0.20.0";
 
 const usage = `GLOP ${VERSION}
 

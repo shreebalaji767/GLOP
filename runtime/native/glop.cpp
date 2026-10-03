@@ -312,8 +312,15 @@ public:
   while(true){
     if(at("(")){
       Token op=take(); auto c=std::make_unique<Call>(); c->f=std::move(a);
-      if(!at(")")){while(true){c->args.push_back(expr());if(at(")"))break;need(",");if(at(")"))break;}}
-      need(")"); a=mark(std::move(c),op); continue;
+      if(at(")")){take();}
+      else {
+        while(true){
+          c->args.push_back(expr());
+          if(at(")")){take();break;}
+          need(",");
+        }
+      }
+      a=mark(std::move(c),op); continue;
     }
     if(at("[")){
       Token op=take(); auto x=expr(); need("]"); auto q=std::make_unique<Index>();

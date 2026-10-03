@@ -312,7 +312,7 @@ public:
   while(true){
     if(at("(")){
       Token op=take(); auto c=std::make_unique<Call>(); c->f=std::move(a);
-      if(!at(")")){do{c->args.push_back(expr());}while(at(",")&&take().text==",");}
+      if(!at(")")){while(true){c->args.push_back(expr());if(at(")"))break;need(",");if(at(")"))break;}}
       need(")"); a=mark(std::move(c),op); continue;
     }
     if(at("[")){
@@ -333,12 +333,12 @@ public:
   if(x.kind==Token::NUM)return mark(std::make_unique<Literal>(x.number),x);
   if(x.kind==Token::STR)return mark(std::make_unique<Literal>(x.text),x);
   if(x.text=="BASED")return mark(std::make_unique<Literal>(true),x);if(x.text=="CAP")return mark(std::make_unique<Literal>(false),x);if(x.text=="VOID")return mark(std::make_unique<Literal>(Value()),x);
-  if(x.text=="BONK"){Token fn=take();auto f=mark(std::make_unique<Name>(fn.text),fn);need("(");auto c=std::make_unique<Call>();c->f=std::move(f);if(!at(")")){do{c->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");return c;}
-  if(x.text=="SUPER"){Token n=take();return mark(std::make_unique<SuperMember>(n.text),x);} if(x.text=="NEW"){auto n=std::make_unique<NewExpr>();Token cn=take();n->klass=mark(std::make_unique<Name>(cn.text),cn);need("(");if(!at(")")){do{n->args.push_back(expr());}while(at(",")&&take().text==",");}need(")");return mark(std::move(n),x);}
+  if(x.text=="BONK"){Token fn=take();auto f=mark(std::make_unique<Name>(fn.text),fn);need("(");auto c=std::make_unique<Call>();c->f=std::move(f);if(!at(")")){while(true){c->args.push_back(expr());if(at(")"))break;need(",");if(at(")"))break;}}need(")");return c;}
+  if(x.text=="SUPER"){Token n=take();return mark(std::make_unique<SuperMember>(n.text),x);} if(x.text=="NEW"){auto n=std::make_unique<NewExpr>();Token cn=take();n->klass=mark(std::make_unique<Name>(cn.text),cn);need("(");if(!at(")")){while(true){n->args.push_back(expr());if(at(")"))break;need(",");if(at(")"))break;}}need(")");return mark(std::move(n),x);}
   if(x.kind==Token::ID)return mark(std::make_unique<Name>(x.text),x);
   if(x.text=="("){auto a=expr();need(")");return a;}
-  if(x.text=="["){auto a=std::make_unique<ArrayExpr>();if(!at("]")){do{a->a.push_back(expr());}while(at(",")&&take().text==",");}need("]");return mark(std::move(a),x);}
-  if(x.text=="{"){auto a=std::make_unique<ObjectExpr>();if(!at("}")){do{auto k=take().text;need(":");a->p.push_back({k,expr()});}while(at(",")&&take().text==",");}need("}");return mark(std::move(a),x);}
+  if(x.text=="["){auto a=std::make_unique<ArrayExpr>();if(!at("]")){while(true){a->a.push_back(expr());if(at("]"))break;need(",");if(at("]"))break;}}need("]");return mark(std::move(a),x);}
+  if(x.text=="{"){auto a=std::make_unique<ObjectExpr>();if(!at("}")){while(true){auto k=take().text;need(":");a->p.push_back({k,expr()});if(at("}"))break;need(",");if(at("}"))break;}}need("}");return mark(std::move(a),x);}
   throw Error("expected expression at "+std::to_string(x.line)+":"+std::to_string(x.col));
  }
 };

@@ -24,6 +24,7 @@ export class SemanticAnalyzer {
   declareBuiltins(){
     const names=["LEN","PUSH","POP","TYPE","TO_STRING","ABS","SQRT","FLOOR","CEIL","SUBSTR","UPPER","LOWER","HAS","KEYS","RANGE","NUMBER","MIN","MAX","POW","CLAMP","ASSERT","REPEAT","TRIM","REPLACE","SPLIT","JOIN","READ_FILE","WRITE_FILE","EXISTS","CWD","JOIN_PATH","ENV","ARGS","TIME_MS","SLEEP_MS","ROUND","RANDOM","JSON_PARSE","JSON_STRINGIFY","IS_NAN","IS_FINITE"];
     for(const name of names)this.global.declare(name,{kind:"builtin",type:TYPE.FUNCTION,arity:null,returnType:TYPE.UNKNOWN});
+    for(const name of ["SUM","AVG","SORT","REVERSE","UNIQUE","CONTAINS","STARTS_WITH","ENDS_WITH","PAD_LEFT","PAD_RIGHT"])this.global.declare(name,{kind:"builtin",type:TYPE.FUNCTION,arity:null,returnType:TYPE.UNKNOWN});
   }
   analyze(program){
     this.predeclareFunctions(program.body,this.global);

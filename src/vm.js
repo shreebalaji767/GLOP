@@ -57,6 +57,15 @@ export class VM {
           this.frames.push({chunk:this.chunk,ip:this.ip,locals:this.locals,freeCells:this.freeCells,globals:this.globals});
           this.chunk=callee.chunk;this.ip=0;this.locals=args.map(value=>new GlopCell(value));this.freeCells=callee.freeCells;this.globals=callee.globals??this.globals;break;
         }
+        case OP.CALL_SUPER:{
+          const argc=ins.arg;if(this.stack.length<argc+2)throw new GlopRuntimeError("stack underflow during SUPER call");
+          const args=this.stack.splice(this.stack.length-argc,argc);const key=this.pop();const receiver=this.pop();
+          const klass=receiver?.__glopClass?.parent;if(!klass)throw new GlopRuntimeError("SUPER has no parent class");
+          const callee=klass.getMethod(key);if(!(callee instanceof GlopFunction))throw new GlopRuntimeError("parent method not found: "+String(key));
+          if(args.length!==callee.chunk.arity)throw new GlopRuntimeError(callee.chunk.name+" expected "+callee.chunk.arity+" argument(s), got "+args.length);
+          this.frames.push({chunk:this.chunk,ip:this.ip,locals:this.locals,freeCells:this.freeCells,globals:this.globals});
+          this.chunk=callee.chunk;this.ip=0;this.locals=[new GlopCell(receiver),...args.map(value=>new GlopCell(value))];this.freeCells=callee.freeCells;this.globals=callee.globals??this.globals;break;
+        }
         case OP.CALL_METHOD:{
           const argc=ins.arg;if(this.stack.length<argc+2)throw new GlopRuntimeError("stack underflow during method call");
           const args=this.stack.splice(this.stack.length-argc,argc);const key=this.pop();const receiver=this.pop();

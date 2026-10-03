@@ -22,7 +22,7 @@ class Scope {
 export class SemanticAnalyzer {
   constructor(){ this.global=new Scope(null,"global"); this.functionTypes=new Map(); this.declareBuiltins(); }
   declareBuiltins(){
-    const names=["LEN","PUSH","POP","TYPE","TO_STRING","ABS","SQRT","FLOOR","CEIL","SUBSTR","UPPER","LOWER","HAS","KEYS","RANGE","NUMBER","MIN","MAX","POW","CLAMP","ASSERT","REPEAT","TRIM","REPLACE","SPLIT","JOIN","READ_FILE","WRITE_FILE","EXISTS","CWD","JOIN_PATH","ENV","ARGS","TIME_MS","SLEEP_MS","ROUND","RANDOM","JSON_PARSE","JSON_STRINGIFY","IS_NAN","IS_FINITE"];
+    const names=["LEN","PUSH","POP","TYPE","TO_STRING","ABS","SQRT","FLOOR","CEIL","SUBSTR","UPPER","LOWER","HAS","KEYS","RANGE","NUMBER","MIN","MAX","POW","CLAMP","ASSERT","REPEAT","TRIM","REPLACE","SPLIT","JOIN","READ_FILE","WRITE_FILE","EXISTS","CWD","JOIN_PATH","ENV","ARGS","TIME_MS","SLEEP_MS","ROUND","RANDOM","JSON_PARSE","JSON_STRINGIFY","IS_NAN","IS_FINITE","INSTANCEOF"];
     for(const name of names)this.global.declare(name,{kind:"builtin",type:TYPE.FUNCTION,arity:null,returnType:TYPE.UNKNOWN});
     for(const name of ["SUM","AVG","SORT","REVERSE","UNIQUE","CONTAINS","STARTS_WITH","ENDS_WITH","PAD_LEFT","PAD_RIGHT"])this.global.declare(name,{kind:"builtin",type:TYPE.FUNCTION,arity:null,returnType:TYPE.UNKNOWN});
   }
@@ -114,7 +114,7 @@ export class SemanticAnalyzer {
         return b?.returnType??TYPE.UNKNOWN;
       }
       case "Array": for(const e of n.elements)this.expression(e,scope); return TYPE.ARRAY;
-      case "Object": for(const p of n.properties)this.expression(p.value,scope); return TYPE.OBJECT;\n      case "FunctionExpr": {\n        const fn=new Scope(scope,"function");\n        for(const p of n.params) fn.declare(p,{kind:"parameter",type:TYPE.UNKNOWN});\n        this.predeclareFunctions(n.body,fn);\n        for(const s of n.body)this.statement(s,fn);\n        return TYPE.FUNCTION;\n      }
+      case "Object": for(const p of n.properties)this.expression(p.value,scope); return TYPE.OBJECT;\n      case "FunctionExpr": {\n        const fn=new Scope(scope,"function");\n        fn.declare("THIS",{kind:"this",type:TYPE.UNKNOWN});\n        for(const p of n.params) fn.declare(p,{kind:"parameter",type:TYPE.UNKNOWN});\n        this.predeclareFunctions(n.body,fn);\n        for(const s of n.body)this.statement(s,fn);\n        return TYPE.FUNCTION;\n      }
       case "Member": this.expression(n.object,scope); return TYPE.UNKNOWN;
       case "Index": this.expression(n.object,scope); this.expression(n.index,scope); return TYPE.UNKNOWN;
       default: throw new GlopSemanticError(`Unknown expression node "${n.type}"`,"UNKNOWN_AST_NODE");

@@ -1,4 +1,4 @@
-# GLOP 0.14
+# GLOP 0.15
 
 GLOP is a real programming language with ridiculous keywords and a serious compiler.
 
@@ -36,7 +36,7 @@ node src/cli.js build examples/hello.glop
 ./glop-runtime examples/hello.gbc
 \`\`\`
 
-GLOP 0.14 adds the GLOP Inspector, a compiler-pipeline health check that reports source size, token count, AST shape, bytecode size, and verifier status. It also retains the source-aware bytecode inspection, VM tracing, bytecode verification, and a JavaScript-side standard library aligned with the native runtime. The project includes modules, closures, exceptions, a persistent REPL, GBC3 bytecode with GBC2 compatibility, a disassembler, source locations, and native runtime tooling. Class syntax and a full interactive debugger remain planned milestones.
+GLOP 0.15 adds the GLOP Inspector plus debugger tooling for source-aware breakpoints, stepping diagnostics, locals, and call-stack reporting. It also retains VM tracing, bytecode verification, the JavaScript/native standard library surface, modules, closures, exceptions, a persistent REPL, GBC3 bytecode with GBC2 compatibility, a disassembler, source locations, and native runtime tooling.
 
 
 ## Dependency-free native GLOP
@@ -197,5 +197,17 @@ The REPL keeps its global environment between submissions, understands multi-lin
 
 
 ## Source-aware debugging
+
+Use the debugger to inspect execution without changing the program:
+
+```text
+glop debug program.glop --break 3
+glop debug program.glop --step
+glop debug program.gbc --break 3
+```
+
+Debugger output includes the current function, source line/column, bytecode offset, opcode, locals when available, and call-stack context. `--step` enables instruction-level debug reporting and `--break N` reports execution at source line `N`.
+
+
 
 GLOP bytecode now carries source line/column metadata. The VM trace reports the function, source position, bytecode offset, opcode, operand, and stack depth. `GBC3` is the current format; the reader remains compatible with legacy `GBC2` files.

@@ -261,7 +261,8 @@ export class Parser{
   if(this.match("WIZARD")){
    const params=this.finishParameterList();
    return node("FunctionExpr",{name:"<anonymous>",params,returnType:null,paramTypes:null,body:this.block()});
-  }\n  if(this.match("THIS"))return node("Identifier",{name:"THIS"});
+  }
+  if(this.match("THIS"))return node("Identifier",{name:"THIS"});
   if(this.match("NEW")){ const callee=this.finishCallee(); const call=this.finishCall(callee); return node("New",{callee:call.callee,args:call.args}); }
   if(this.match("BASED"))return node("Literal",{value:true});
   if(this.match("CAP"))return node("Literal",{value:false});

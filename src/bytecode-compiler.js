@@ -11,7 +11,7 @@ export class BytecodeCompiler {
 
   compileFunction(n) {
     const previous=this.b, previousLocals=this.locals, previousLoops=this.loopContexts;
-    this.b=new BytecodeBuilder(); this.locals=new Map([["THIS",0],...n.params.map((name,i)=>[name,i+1])]);
+    this.b=new BytecodeBuilder(); this.locals=n.isMethod?new Map([["THIS",0],...n.params.map((name,i)=>[name,i+1])]):new Map(n.params.map((name,i)=>[name,i]));
     for(const s of n.body) if(s.type==="FunctionDecl"&&!this.locals.has(s.name)) this.locals.set(s.name,this.locals.size);
     this.loopContexts=[]; const context={locals:this.locals,freeNames:[],freeMap:new Map()}; this.contexts.push(context);
     for(const s of n.body) this.statement(s);

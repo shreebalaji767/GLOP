@@ -254,7 +254,7 @@ export class Parser{
    const params=this.finishParameterList();
    return node("FunctionExpr",{name:"<anonymous>",params,body:this.block()});
   }\n  if(this.match("THIS"))return node("Identifier",{name:"THIS"});
-  if(this.match("NEW")){ const callee=this.finishCallee(); return node("New",{callee,args:this.finishCall(node("Identifier",{name:"__NEW__"})).args}); }
+  if(this.match("NEW")){ const callee=this.finishCallee(); const call=this.finishCall(callee); return node("New",{callee:call.callee,args:call.args}); }
   if(this.match("BASED"))return node("Literal",{value:true});
   if(this.match("CAP"))return node("Literal",{value:false});
   if(this.match("VOID"))return node("Literal",{value:null});

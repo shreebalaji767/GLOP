@@ -36,5 +36,11 @@ export const GLOP_STDLIB=Object.freeze({
   ENV(a){need(1,a);return process.env[str(a[0],"ENV")]??null},
   ARGS(a){need(0,a);return process.argv.slice(2)},
   TIME_MS(a){need(0,a);return Date.now()},
-  SLEEP_MS(a){need(1,a);const ms=num(a[0],"SLEEP_MS");const end=Date.now()+ms;while(Date.now()<end){}return null}
+  SLEEP_MS(a){need(1,a);const ms=num(a[0],"SLEEP_MS");const end=Date.now()+ms;while(Date.now()<end){}return null},
+  ROUND(a){need(1,a);return Math.round(num(a[0],"ROUND"))},
+  RANDOM(a){if(a.length>2)throw new Error("RANDOM expects 0 to 2 arguments");if(a.length===0)return Math.random();const max=num(a[0],"RANDOM");return Math.random()*max},
+  JSON_PARSE(a){need(1,a);return JSON.parse(str(a[0],"JSON_PARSE"))},
+  JSON_STRINGIFY(a){if(a.length<1||a.length>2)throw new Error("JSON_STRINGIFY expects 1 or 2 arguments");return JSON.stringify(a[0],null,a.length===2?num(a[1],"JSON_STRINGIFY"):0)},
+  IS_NAN(a){need(1,a);return typeof a[0]==="number"&&Number.isNaN(a[0])},
+  IS_FINITE(a){need(1,a);return typeof a[0]==="number"&&Number.isFinite(a[0])}
 });

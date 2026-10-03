@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.17.0 — language polish
+
+- Added `/* ... */` block comments.
+- Added scientific-notation number literals.
+- Added `ROUND`, `RANDOM`, `JSON_PARSE`, `JSON_STRINGIFY`, `IS_NAN`, and `IS_FINITE` to the JavaScript standard library.
+- Added lexer regression tests for the new syntax.
+
+
 ## 0.16.0 — CLI polish
 
 - Added `glop --version`, `glop -v`, and `glop version`.

@@ -11,6 +11,17 @@ assert.match(run("GLOP x = 10\nYAP x+2"), /let x=10/);
 assert.match(run("WIZARD add(a,b){YEET a+b}\nYAP BONK add(2,3)"), /function add/);
 assert.match(run("GLOP x=0\nSPIN x<3{x+=1}"), /while/);
 assert.match(run("GLOP a=[1,2]\nGLOP p={name:«RAVI»}\nYAP p.name"), /"name":"RAVI"/);
+assert.match(run("WIZARD add(a,b){YEET a+b}\nWIZARD wrap(x,y){YEET x+y}\nYAP BONK wrap(BONK add(1,2),BONK add(3,4))"), /function wrap/);
+assert.match(run("WIZARD make(x){YEET x}\nYAP BONK make(1)(2)"), /function make/);
+assert.match(run("GLOP a=[1,2,]\nGLOP p={name:«RAVI»,age:25,}\nYAP p.name"), /"name":"RAVI"/);
+assert.throws(() => parse(lex("YAP BONK add(1,)")), /Expected expression for call argument|Expected expression after comma/);
+assert.throws(() => parse(lex("YAP BONK add(,1)")), /Expected expression for call argument/);
+assert.throws(() => parse(lex("YAP BONK add(1 2)")), /Expected , or \\) after call argument/);
+assert.throws(() => parse(lex("YAP BONK add(BONK inner(1,2)")), /Expected , or \\) after call argument|Expected \\) after call argument/);
+assert.throws(() => parse(lex("YAP [1,,2]")), /Expected array element/);
+assert.throws(() => parse(lex("YAP {name:«RAVI»,,age:25}")), /Expected object property/);
+const deep="YAP "+"(".repeat(1100)+"1"+")".repeat(1100);
+assert.throws(() => parse(lex(deep),{maxExpressionDepth:1000}), e => e.code === "PARSE_LIMIT");
 
 check("GLOP x=10\nYAP x");
 assert.throws(() => check("YAP missing"), e => e instanceof GlopSemanticError && e.code === "UNDEFINED_NAME");

@@ -14,6 +14,8 @@ import { verifyBytecode } from "./verifier.js";
 
 const [, , cmd, file, ...rest] = process.argv;
 
+let source = "";
+
 if (cmd === "repl") {
   const { startRepl } = await import("./repl.js");
   await startRepl();
@@ -44,7 +46,7 @@ try {
       runBytecode(bc, { output: console.log, trace: true });
       process.exit(0);
     }
-    const source = fs.readFileSync(file, "utf8");
+    source = fs.readFileSync(file, "utf8");
     const ast = parse(lex(source));
     const program = ast.body.some(s => s.type === "ImportDecl" || s.type === "ExportDecl")
       ? bundleModules(file).ast
@@ -70,7 +72,7 @@ try {
     process.exit(0);
   }
 
-  const source = fs.readFileSync(file, "utf8");
+  source = fs.readFileSync(file, "utf8");
   const tokens = lex(source);
   const ast = parse(tokens);
 

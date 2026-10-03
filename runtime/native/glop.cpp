@@ -333,7 +333,7 @@ public:
   if(x.kind==Token::NUM)return mark(std::make_unique<Literal>(x.number),x);
   if(x.kind==Token::STR)return mark(std::make_unique<Literal>(x.text),x);
   if(x.text=="BASED")return mark(std::make_unique<Literal>(true),x);if(x.text=="CAP")return mark(std::make_unique<Literal>(false),x);if(x.text=="VOID")return mark(std::make_unique<Literal>(Value()),x);
-  if(x.text=="BONK"){Token fn=take();auto f=mark(std::make_unique<Name>(fn.text),fn);return postfix(std::move(f));}
+  if(x.text=="BONK"){Token fn=take();auto f=mark(std::make_unique<Name>(fn.text),fn);if(at("(")){Token op=take();auto call=std::make_unique<Call>();call->f=std::move(f);if(!at(")")){call->args.push_back(expr());while(at(",")){take();call->args.push_back(expr());}}need(")");return mark(std::move(call),op);}return f;}
   if(x.text=="SUPER"){Token n=take();return mark(std::make_unique<SuperMember>(n.text),x);} if(x.text=="NEW"){auto n=std::make_unique<NewExpr>();Token cn=take();n->klass=mark(std::make_unique<Name>(cn.text),cn);need("(");if(!at(")")){while(true){n->args.push_back(expr());if(at(")"))break;need(",");if(at(")"))break;}}need(")");return mark(std::move(n),x);}
   if(x.kind==Token::ID)return mark(std::make_unique<Name>(x.text),x);
   if(x.text=="("){auto a=expr();need(")");return a;}

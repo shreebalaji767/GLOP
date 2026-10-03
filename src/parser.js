@@ -263,6 +263,7 @@ export class Parser{
    return node("FunctionExpr",{name:"<anonymous>",params,returnType:null,paramTypes:null,body:this.block()});
   }
   if(this.match("THIS"))return node("Identifier",{name:"THIS"});
+  if(this.match("SUPER")){this.expect(".","Expected . after SUPER");const property=this.expect("identifier","Expected parent method name").value;return node("SuperMember",{property});}
   if(this.match("NEW")){ const callee=this.finishCallee(); const call=this.finishCall(callee); return node("New",{callee:call.callee,args:call.args}); }
   if(this.match("BASED"))return node("Literal",{value:true});
   if(this.match("CAP"))return node("Literal",{value:false});

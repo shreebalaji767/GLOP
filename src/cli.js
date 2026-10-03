@@ -11,6 +11,7 @@ import { ModuleLoader } from "./module-loader.js";
 import { bundleModules } from "./module-bundler.js";
 import { disassemble } from "./disassembler.js";
 import { verifyBytecode } from "./verifier.js";
+import { inspect } from "./inspect.js";
 
 const [, , cmd, file, ...rest] = process.argv;
 
@@ -22,7 +23,7 @@ if (cmd === "repl") {
   process.exit(0);
 }
 
-const usage = `GLOP 0.13.0
+const usage = `GLOP 0.14.0
 
   glop run <file.glop|file.gbc>
   glop repl
@@ -30,9 +31,9 @@ const usage = `GLOP 0.13.0
   glop check <file.glop>
   glop build <file.glop> [-o out.gbc]
   glop tokens <file.glop>
-  glop dump <file.glop|file.gbc>\n  glop trace <file.glop|file.gbc>\n  glop verify <file.gbc>`;
+  glop dump <file.glop|file.gbc>\n  glop trace <file.glop|file.gbc>\n  glop verify <file.gbc>\n  glop inspect <file.glop|file.gbc> [--json]`;
 
-if (!cmd || !file) {
+if (cmd === "inspect") {\n  if (!file) { console.log(usage); process.exit(1); }\n  try { inspect(file, { json: rest.includes("--json") }); process.exit(0); }\n  catch (e) { console.error(`GLOP OOPSIE: ${e.message}`); process.exit(1); }\n}\n\nif (!cmd || !file) {
   console.log(usage);
   process.exit(cmd ? 1 : 0);
 }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.19.0 — standard-library chaos
+
+- Added numeric helpers for sums and averages.
+- Added collection helpers for sorting, reversing, and removing duplicates.
+- Added string helpers for containment, prefix/suffix checks, and padding.
+- Added runtime type inspection for common GLOP values.
+
+
 ## 0.18.0 — function chaos
 
 - Added anonymous function expressions with `WIZARD(...) { ... }`.

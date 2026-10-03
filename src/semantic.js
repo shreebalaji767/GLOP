@@ -49,9 +49,10 @@ export class SemanticAnalyzer {
       case "ImportDecl": if(scope!==this.global) throw new GlopSemanticError("STEAL is only allowed at module scope","IMPORT_SCOPE"); return;
       case "ExportDecl": if(scope!==this.global) throw new GlopSemanticError("FLEX is only allowed at module scope","EXPORT_SCOPE"); for(const name of n.names) if(!scope.resolve(name)) throw new GlopSemanticError(`Cannot FLEX undefined name "${name}"`,"EXPORT_UNDEFINED"); return;
       case "VarDecl": { const type=this.expression(n.value,scope); const declared=n.declaredType?this.typeName(n.declaredType):null; if(n.declaredType&&declared===null)throw new GlopSemanticError(`Unknown type "${n.declaredType}"`,"TYPE_ERROR"); if(declared!==null)this.ensureAssignable(declared,type,n.name); scope.declare(n.name,{kind:"variable",type:declared??type}); return; }
-      case "ClassDecl": { if(n.parent){const p=scope.resolve(n.parent); if(!p) throw new GlopSemanticError(`Undefined parent class "${n.parent}"`,"UNDEFINED_NAME"); if(p.kind!=="class") throw new GlopSemanticError(`EXTENDS requires a CLASS, got ${p.type}`,"TYPE_ERROR");} scope.declare(n.name,{kind:"class",type:TYPE.FUNCTION,parent:n.parent}); for(const m of n.methods){const fn=new Scope(scope,"function"); fn.declare("THIS",{kind:"this",type:TYPE.UNKNOWN}); for(const p of m.params)fn.declare(p,{kind:"parameter",type:TYPE.UNKNOWN}); this.predeclareFunctions(m.body,fn); for(const st of m.body)this.statement(st,fn);} return; }
+      case "ClassDecl": { if(n.parent){const p=scope.resolve(n.parent); if(!p) throw new GlopSemanticError(`Undefined parent class "${n.parent}"`,"UNDEFINED_NAME"); if(p.kind!=="class") throw new GlopSemanticError(`EXTENDS requires a CLASS, got ${p.type}`,"TYPE_ERROR");} scope.declare(n.name,{kind:"class",type:TYPE.FUNCTION,parent:n.parent}); for(const m of n.methods){const fn=new Scope(scope,"function"); fn.returnType=m.returnType?this.typeName(m.returnType):TYPE.UNKNOWN; fn.declare("THIS",{kind:"this",type:TYPE.UNKNOWN}); for(const [i,p] of m.params.entries())fn.declare(p,{kind:"parameter",type:m.paramTypes?.[i]?this.typeName(m.paramTypes[i]):TYPE.UNKNOWN}); this.predeclareFunctions(m.body,fn); for(const st of m.body)this.statement(st,fn);} return; }
       case "FunctionDecl": {
         const fn=new Scope(scope,"function");
+        fn.returnType=n.returnType?this.typeName(n.returnType):TYPE.UNKNOWN;
         for(const [i,p] of n.params.entries()) fn.declare(p,{kind:"parameter",type:n.paramTypes?.[i]?this.typeName(n.paramTypes[i]):TYPE.UNKNOWN});
         this.predeclareFunctions(n.body,fn);
         for(const s of n.body)this.statement(s,fn);
@@ -66,7 +67,7 @@ export class SemanticAnalyzer {
         this.requireBoolean(this.expression(n.test,scope),"SPIN condition"); this.block(n.body,scope,"loop"); return;
       case "Return":
         if(!scope.hasFunctionBoundary()) throw new GlopSemanticError("YEET can only be used inside a WIZARD","RETURN_OUTSIDE_FUNCTION");
-        this.expression(n.value,scope); return;
+        const actual=this.expression(n.value,scope); if(scope.returnType&&scope.returnType!==TYPE.UNKNOWN)this.ensureAssignable(scope.returnType,actual,"return value"); return;
       case "Break":
         if(!scope.hasLoopBoundary()) throw new GlopSemanticError("NOPE can only be used inside a SPIN loop","BREAK_OUTSIDE_LOOP"); return;
       case "Continue":
@@ -122,7 +123,7 @@ export class SemanticAnalyzer {
       case "Object": for(const p of n.properties)this.expression(p.value,scope); return TYPE.OBJECT;
       case "FunctionExpr": {
         const fn=new Scope(scope,"function");
-        if(n.isMethod)fn.declare("THIS",{kind:"this",type:TYPE.UNKNOWN});
+        fn.returnType=n.returnType?this.typeName(n.returnType):TYPE.UNKNOWN; if(n.isMethod)fn.declare("THIS",{kind:"this",type:TYPE.UNKNOWN});
         for(const p of n.params) fn.declare(p,{kind:"parameter",type:TYPE.UNKNOWN});
         this.predeclareFunctions(n.body,fn);\n        for(const s of n.body)this.statement(s,fn);\n        return TYPE.FUNCTION;\n      }
       case "Member": this.expression(n.object,scope); return TYPE.UNKNOWN;

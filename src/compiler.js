@@ -11,6 +11,7 @@ export class Compiler{
  case"If":return`if(${this.expr(n.test)}){\n${ind(n.consequent.map(x=>this.statement(x)).join("\n"))}\n}`+(n.alternate?`else{\n${ind(n.alternate.map(x=>this.statement(x)).join("\n"))}\n}`:"");
  case"While":return`while(${this.expr(n.test)}){\n${ind(n.body.map(x=>this.statement(x)).join("\n"))}\n}`;
  case"FunctionDecl":return`function ${n.name}(${n.params.join(",")}){\n${ind(n.body.map(x=>this.statement(x)).join("\n"))}\n}`;
+ case"ClassDecl":return`class ${n.name}{\n${ind(n.methods.map(m=>m.isInitializer?`constructor(${m.params.join(",")}){\n${ind(m.body.map(x=>this.statement(x)).join("\n"),2)}\n}`:`${m.name}(${m.params.join(",")}){\n${ind(m.body.map(x=>this.statement(x)).join("\n"),2)}\n}`).join("\n"))}\n}`;
  case"Return":return`return ${this.expr(n.value)};`;
  case"Throw":return`throw ${this.expr(n.value)};`;
  case"TryCatch":return`try{\n${ind(n.tryBody.map(x=>this.statement(x)).join("\n"))}\n}catch(${n.param}){\n${ind(n.catchBody.map(x=>this.statement(x)).join("\n"))}\n}`;
@@ -19,6 +20,7 @@ export class Compiler{
  expr(n){switch(n.type){
  case"Literal":return JSON.stringify(n.value);case"Identifier":return n.name;
  case"Unary":return`(${n.op}${this.expr(n.argument)})`;case"Binary":return`(${this.expr(n.left)} ${n.op} ${this.expr(n.right)})`;
+ case"New":return`new ${this.expr(n.callee)}(${n.args.map(x=>this.expr(x)).join(",")})`;
  case"Call":return`${this.expr(n.callee)}(${n.args.map(x=>this.expr(x)).join(",")})`;
  case"FunctionExpr":return`function(${n.params.join(",")}){\n${ind(n.body.map(x=>this.statement(x)).join("\n"))}\n}`;
  case"Index":return`${this.expr(n.object)}[${this.expr(n.index)}]`;

@@ -51,7 +51,7 @@ export class VM {
           if(!(callee instanceof GlopFunction))throw new GlopRuntimeError("attempted to BONK a non-function");
           if(args.length!==callee.chunk.arity)throw new GlopRuntimeError(callee.chunk.name+" expected "+callee.chunk.arity+" argument(s), got "+args.length);
           this.frames.push({chunk:this.chunk,ip:this.ip,locals:this.locals,freeCells:this.freeCells,globals:this.globals});
-          this.chunk=callee.chunk;this.ip=0;this.locals=[new GlopCell(null),...args.map(value=>new GlopCell(value))];this.freeCells=callee.freeCells;this.globals=callee.globals??this.globals;break;
+          this.chunk=callee.chunk;this.ip=0;this.locals=args.map(value=>new GlopCell(value));this.freeCells=callee.freeCells;this.globals=callee.globals??this.globals;break;
         }
         case OP.CALL_METHOD:{
           const argc=ins.arg;if(this.stack.length<argc+2)throw new GlopRuntimeError("stack underflow during method call");

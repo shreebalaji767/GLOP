@@ -19,7 +19,8 @@ export class Compiler{
  expr(n){switch(n.type){
  case"Literal":return JSON.stringify(n.value);case"Identifier":return n.name;
  case"Unary":return`(${n.op}${this.expr(n.argument)})`;case"Binary":return`(${this.expr(n.left)} ${n.op} ${this.expr(n.right)})`;
- case"Call":return`${this.expr(n.callee)}(${n.args.map(x=>this.expr(x)).join(",")})`;\n case"FunctionExpr":return`function(${n.params.join(",")}){\n${ind(n.body.map(x=>this.statement(x)).join("\n"))}\n}`;
+ case"Call":return`${this.expr(n.callee)}(${n.args.map(x=>this.expr(x)).join(",")})`;
+ case"FunctionExpr":return`function(${n.params.join(",")}){\n${ind(n.body.map(x=>this.statement(x)).join("\n"))}\n}`;
  case"Index":return`${this.expr(n.object)}[${this.expr(n.index)}]`;
  case"Member":return`${this.expr(n.object)}.${n.property}`;
  case"Array":return`[${n.elements.map(x=>this.expr(x)).join(",")}]`;

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.20.0 — object chaos
+
+- Added receiver-aware object method calls with `BONK object.method(...)`.
+- Added `THIS` inside WIZARD functions so methods can read and update their receiver.
+- Added bytecode VM support for bound method calls and verifier stack validation.
+- Added regression tests for object methods, method arguments, and `THIS`.
+
+
 ## 0.19.0 — standard-library chaos
 
 - Added numeric helpers for sums and averages.

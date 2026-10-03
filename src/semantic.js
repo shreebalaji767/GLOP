@@ -40,7 +40,7 @@ export class SemanticAnalyzer {
     for(const s of statements)this.statement(s,scope); return scope;
   }
   statement(n,scope){
-    switch(n.type){
+    try { switch(n.type){
       case "ImportDecl": if(scope!==this.global) throw new GlopSemanticError("STEAL is only allowed at module scope","IMPORT_SCOPE"); return;
       case "ExportDecl": if(scope!==this.global) throw new GlopSemanticError("FLEX is only allowed at module scope","EXPORT_SCOPE"); for(const name of n.names) if(!scope.resolve(name)) throw new GlopSemanticError(`Cannot FLEX undefined name "${name}"`,"EXPORT_UNDEFINED"); return;
       case "VarDecl": { const type=this.expression(n.value,scope); scope.declare(n.name,{kind:"variable",type}); return; }
@@ -72,6 +72,9 @@ export class SemanticAnalyzer {
         this.predeclareFunctions(n.catchBody,cs); for(const s of n.catchBody)this.statement(s,cs); return;
       }
       default: throw new GlopSemanticError(`Unknown statement node "${n.type}"`,"UNKNOWN_AST_NODE");
+    } } catch(e) {
+      if(e instanceof GlopSemanticError && !e.line && n.loc){e.line=n.loc.line;e.column=n.loc.column;}
+      throw e;
     }
   }
   requireBoolean(type,where){ if(type!==TYPE.UNKNOWN&&type!==TYPE.BOOLEAN) throw new GlopSemanticError(`${where} requires a boolean expression, got ${type}`,"TYPE_ERROR"); }
@@ -89,7 +92,7 @@ export class SemanticAnalyzer {
   ensureAssignable(expected,actual,name){ if(expected!==TYPE.UNKNOWN&&actual!==TYPE.UNKNOWN&&expected!==actual) throw new GlopSemanticError(`Cannot assign ${actual} to ${name} (declared as ${expected})`,"TYPE_ERROR"); }
   requireNumericLike(type,op){ if(type!==TYPE.UNKNOWN&&type!==TYPE.NUMBER) throw new GlopSemanticError(`Operator ${op} requires a number, got ${type}`,"TYPE_ERROR"); }
   expression(n,scope){
-    switch(n.type){
+    try { switch(n.type){
       case "Literal": return n.value===null?TYPE.NULL:typeof n.value;
       case "Identifier": { const b=scope.resolve(n.name); if(!b) throw new GlopSemanticError(`Undefined name "${n.name}"`,"UNDEFINED_NAME"); return b.type??(b.kind==="function"?TYPE.FUNCTION:TYPE.UNKNOWN); }
       case "Unary": { const t=this.expression(n.argument,scope); if(n.op==="-" )this.requireNumericLike(t,n.op); return n.op==="!"?TYPE.BOOLEAN:TYPE.NUMBER; }
@@ -113,6 +116,9 @@ export class SemanticAnalyzer {
       case "Member": this.expression(n.object,scope); return TYPE.UNKNOWN;
       case "Index": this.expression(n.object,scope); this.expression(n.index,scope); return TYPE.UNKNOWN;
       default: throw new GlopSemanticError(`Unknown expression node "${n.type}"`,"UNKNOWN_AST_NODE");
+    } } catch(e) {
+      if(e instanceof GlopSemanticError && !e.line && n.loc){e.line=n.loc.line;e.column=n.loc.column;}
+      throw e;
     }
   }
 }

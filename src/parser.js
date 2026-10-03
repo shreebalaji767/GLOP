@@ -105,8 +105,8 @@ export class Parser{
     const kind=this.match("INIT")?"INIT":(this.match("WIZARD")?"WIZARD":null);
     if(!kind)throw new GlopParseError("Expected INIT or WIZARD inside CLASS",this.peek());
     const methodName=kind==="INIT"?"INIT":this.expect("identifier","Expected method name").value;
-    const params=this.finishParameterList(); const paramTypes=this.lastParamTypes;
-    methods.push(node("FunctionExpr",{name:methodName,params,paramTypes,body:this.block(),isMethod:true,isInitializer:kind==="INIT"}));
+    const params=this.finishParameterList(); const paramTypes=this.lastParamTypes; let returnType=null; if(this.match(":")) returnType=this.parseTypeName();
+    methods.push(node("FunctionExpr",{name:methodName,params,paramTypes,returnType,body:this.block(),isMethod:true,isInitializer:kind==="INIT"}));
    }
    this.expect("}","Expected } to close class");
    return node("ClassDecl",{name,parent,methods});

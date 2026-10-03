@@ -32,9 +32,13 @@ export class SemanticAnalyzer {
     for(const s of program.body)this.statement(s,this.global);
     return program;
   }
+  typeName(name){ return ({NUMBER:TYPE.NUMBER,STRING:TYPE.STRING,BOOLEAN:TYPE.BOOLEAN,ARRAY:TYPE.ARRAY,OBJECT:TYPE.OBJECT,FUNCTION:TYPE.FUNCTION,ANY:TYPE.UNKNOWN,VOID:TYPE.NULL})[name]??null; }
   predeclareFunctions(statements,scope){
-    for(const s of statements) if(s.type==="FunctionDecl")
-      scope.declare(s.name,{kind:"function",arity:s.params.length,returnType:TYPE.UNKNOWN});
+    for(const s of statements) if(s.type==="FunctionDecl"){
+      const returnType=s.returnType?this.typeName(s.returnType):TYPE.UNKNOWN;
+      if(returnType===null)throw new GlopSemanticError(`Unknown return type "${s.returnType}"`,"TYPE_ERROR");
+      scope.declare(s.name,{kind:"function",arity:s.params.length,returnType,paramTypes:(s.paramTypes??[]).map(x=>x?this.typeName(x):TYPE.UNKNOWN)});
+    }
   }
   block(statements,parent,kind="block"){
     const scope=new Scope(parent,kind); this.predeclareFunctions(statements,scope);
@@ -44,11 +48,11 @@ export class SemanticAnalyzer {
     try { switch(n.type){
       case "ImportDecl": if(scope!==this.global) throw new GlopSemanticError("STEAL is only allowed at module scope","IMPORT_SCOPE"); return;
       case "ExportDecl": if(scope!==this.global) throw new GlopSemanticError("FLEX is only allowed at module scope","EXPORT_SCOPE"); for(const name of n.names) if(!scope.resolve(name)) throw new GlopSemanticError(`Cannot FLEX undefined name "${name}"`,"EXPORT_UNDEFINED"); return;
-      case "VarDecl": { const type=this.expression(n.value,scope); scope.declare(n.name,{kind:"variable",type}); return; }
+      case "VarDecl": { const type=this.expression(n.value,scope); const declared=n.declaredType?this.typeName(n.declaredType):null; if(n.declaredType&&declared===null)throw new GlopSemanticError(`Unknown type "${n.declaredType}"`,"TYPE_ERROR"); if(declared!==null)this.ensureAssignable(declared,type,n.name); scope.declare(n.name,{kind:"variable",type:declared??type}); return; }
       case "ClassDecl": { if(n.parent){const p=scope.resolve(n.parent); if(!p) throw new GlopSemanticError(`Undefined parent class "${n.parent}"`,"UNDEFINED_NAME"); if(p.kind!=="class") throw new GlopSemanticError(`EXTENDS requires a CLASS, got ${p.type}`,"TYPE_ERROR");} scope.declare(n.name,{kind:"class",type:TYPE.FUNCTION,parent:n.parent}); for(const m of n.methods){const fn=new Scope(scope,"function"); fn.declare("THIS",{kind:"this",type:TYPE.UNKNOWN}); for(const p of m.params)fn.declare(p,{kind:"parameter",type:TYPE.UNKNOWN}); this.predeclareFunctions(m.body,fn); for(const st of m.body)this.statement(st,fn);} return; }
       case "FunctionDecl": {
         const fn=new Scope(scope,"function");
-        for(const p of n.params) fn.declare(p,{kind:"parameter",type:TYPE.UNKNOWN});
+        for(const [i,p] of n.params.entries()) fn.declare(p,{kind:"parameter",type:n.paramTypes?.[i]?this.typeName(n.paramTypes[i]):TYPE.UNKNOWN});
         this.predeclareFunctions(n.body,fn);
         for(const s of n.body)this.statement(s,fn);
         return;
@@ -110,7 +114,7 @@ export class SemanticAnalyzer {
       case "Call": {
         const b=n.callee.type==="Identifier"?scope.resolve(n.callee.name):null;
         const ct=this.expression(n.callee,scope); if(ct!==TYPE.UNKNOWN&&ct!==TYPE.FUNCTION) throw new GlopSemanticError(`Cannot BONK a ${ct}`,"TYPE_ERROR");
-        for(const a of n.args)this.expression(a,scope);
+        for(const [i,a] of n.args.entries()){const at=this.expression(a,scope); const expected=b?.paramTypes?.[i]??TYPE.UNKNOWN; if(expected!==TYPE.UNKNOWN)this.ensureAssignable(expected,at,n.callee.name??"argument");}
         if((b?.kind==="function"||b?.kind==="builtin")&&b.arity!==null&&n.args.length!==b.arity) throw new GlopSemanticError(`${n.callee.name} expects ${b.arity} argument(s), got ${n.args.length}`,"ARITY_ERROR");
         return b?.returnType??TYPE.UNKNOWN;
       }

@@ -24,6 +24,7 @@ assert.deepEqual(execute("GLOP nums=[5,2,9,2] YAP SUM(nums) YAP AVG(nums) YAP SO
 assert.deepEqual(execute("YAP CONTAINS(«banana»,«nan») YAP STARTS_WITH(«GLOP»,«GL») YAP ENDS_WITH(«GLOP»,«OP») YAP PAD_LEFT(«42»,5,«0»)").output,[true,true,true,"00042"]);
 assert.deepEqual(execute("GLOP dog={name:«BOB»,bark:WIZARD(){ YEET THIS.name }} YAP BONK dog.bark()").output,["BOB"]);
 assert.deepEqual(execute("GLOP dog={name:«BOB»,say:WIZARD(word){ YEET THIS.name+word }} YAP BONK dog.say(«! »)").output,["BOB! "]);
+assert.deepEqual(execute("GLOP dog={name:«BOB»,make:WIZARD(){ WIZARD inner(){ YEET THIS.name } YEET inner }} GLOP f=BONK dog.make() YAP BONK f()").output,["BOB"]);
 assert.deepEqual(execute("WIZARD add(a,b){ YEET a+b } YAP BONK add(10,20)").output,[30]);
 assert.deepEqual(execute("GLOP add=WIZARD(a,b){ YEET a+b } YAP BONK add(10,20)").output,[30]);
 assert.deepEqual(execute("GLOP make=WIZARD(x){ WIZARD inner(){ YEET x*2 } YEET inner } GLOP f=BONK make(21) YAP BONK f()").output,[42]);

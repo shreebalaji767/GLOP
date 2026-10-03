@@ -92,6 +92,8 @@ export class Parser{
   }
   if(this.match("CLASS")){
    const name=this.expect("identifier","Expected class name").value;
+   let parent=null;
+   if(this.match("EXTENDS")) parent=this.expect("identifier","Expected parent class name after EXTENDS").value;
    this.expect("{","Expected { after class name");
    const methods=[];
    while(!this.check("}")&&!this.check("eof")){
@@ -102,7 +104,7 @@ export class Parser{
     methods.push(node("FunctionExpr",{name:methodName,params,body:this.block(),isMethod:true,isInitializer:kind==="INIT"}));
    }
    this.expect("}","Expected } to close class");
-   return node("ClassDecl",{name,methods});
+   return node("ClassDecl",{name,parent,methods});
   }
 
   if(this.match("YEET")){

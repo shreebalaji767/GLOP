@@ -20,7 +20,7 @@ assert.deepEqual(execute("GLOP x=[1,2] YAP x[0] YAP x[1]").output,[1,2]);
 assert.deepEqual(execute("WIZARD make(){ YEET [1,2,3] } GLOP x=BONK make() YAP x[2]").output,[3]);
 
 assert.deepEqual(execute("GLOP x=10 GLOP y=20 YAP x+y").output,[30]);
-assert.deepEqual(execute("WIZARD add(a,b){ YEET a+b } YAP BONK add(10,20)").output,[30]);
+assert.deepEqual(execute("WIZARD add(a,b){ YEET a+b } YAP BONK add(10,20)").output,[30]);\nassert.deepEqual(execute("GLOP add=WIZARD(a,b){ YEET a+b } YAP BONK add(10,20)").output,[30]);\nassert.deepEqual(execute("GLOP make=WIZARD(x){ WIZARD inner(){ YEET x*2 } YEET inner } GLOP f=BONK make(21) YAP BONK f()").output,[42]);
 assert.deepEqual(execute("WIZARD square(x){ YEET x*x } YAP BONK square(7)").output,[49]);
 assert.deepEqual(execute("WIZARD fact(n){ SUS n<=1 { YEET 1 } YEET n*BONK fact(n-1) } YAP BONK fact(5)").output,[120]);
 

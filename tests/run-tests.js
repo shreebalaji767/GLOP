@@ -30,7 +30,10 @@ assert.throws(() => parse(lex("YAP {a:1,b:2,c:3}"),{maxObjectProperties:2}), e =
 assert.throws(() => parse(lex("WIZARD f(a,b,c){YEET a}"),{maxParameters:2}), e => e.code === "PARSE_LIMIT");
 assert.throws(() => parse(lex("YAP 1\nYAP 2\nYAP 3"),{maxStatements:2}), e => e.code === "PARSE_LIMIT");
 
-check("GLOP x=10\nYAP x");
+check("GLOP x:NUMBER=10\nYAP x");
+check("WIZARD add(a:NUMBER,b:NUMBER):NUMBER{YEET a+b}\nYAP BONK add(2,3)");
+assert.throws(() => check("GLOP x:NUMBER=«NOPE»"), e => e instanceof GlopSemanticError && e.code === "TYPE_ERROR");
+assert.throws(() => check("WIZARD add(a:NUMBER):NUMBER{YEET «NOPE»}"), e => e instanceof GlopSemanticError && e.code === "TYPE_ERROR");
 assert.throws(() => check("YAP missing"), e => e instanceof GlopSemanticError && e.code === "UNDEFINED_NAME");
 assert.throws(() => check("YEET 1"), e => e instanceof GlopSemanticError && e.code === "RETURN_OUTSIDE_FUNCTION");
 

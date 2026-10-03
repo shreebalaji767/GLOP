@@ -220,7 +220,8 @@ if (cmd === "lint") {
 if (cmd === "doctor") {
   const checks = [
     ["Node.js", Number(process.versions.node.split(".")[0]) >= 18, process.versions.node],
-    ["package.json", fs.existsSync("package.json"), "present"],
+    ["package.json", fs.existsSync(new URL("../package.json", import.meta.url)), "present"],
+    ["project manager", fs.existsSync(new URL("./project.js", import.meta.url)), "present"],
     ["lexer", fs.existsSync(new URL("./lexer.js", import.meta.url)), "present"],
     ["parser", fs.existsSync(new URL("./parser.js", import.meta.url)), "present"],
     ["bytecode VM", fs.existsSync(new URL("./vm.js", import.meta.url)), "present"],

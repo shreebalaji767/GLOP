@@ -62,9 +62,12 @@ export class Parser{
   if(this.match("GLOP")){
    const name=this.expect("identifier","Expected variable name").value;
    this.expect("=","Expected = after variable name");
+   let declaredType=null;
+   if(this.match(":")) declaredType=this.parseTypeName();
+   this.expect("=","Expected = after variable declaration");
    const value=this.expression();
    this.match(";");
-   return node("VarDecl",{name,value});
+   return node("VarDecl",{name,value,declaredType});
   }
 
   if(this.match("YAP")){
@@ -88,7 +91,9 @@ export class Parser{
   if(this.match("WIZARD")){
    const name=this.expect("identifier","Expected function name").value;
    const params=this.finishParameterList();
-   return node("FunctionDecl",{name,params,body:this.block()});
+   let returnType=null;
+   if(this.match(":")) returnType=this.parseTypeName();
+   return node("FunctionDecl",{name,params,returnType,body:this.block()});
   }
   if(this.match("CLASS")){
    const name=this.expect("identifier","Expected class name").value;
@@ -147,13 +152,15 @@ export class Parser{
   return node("ExpressionStatement",{expression});
  }
 
+ parseTypeName(){ const t=this.expect("identifier","Expected type name"); const allowed=new Set(["NUMBER","STRING","BOOLEAN","ARRAY","OBJECT","FUNCTION","ANY","VOID"]); if(!allowed.has(t.value)) throw new GlopParseError(`Unknown type "${t.value}"`,t,"TYPE_ERROR"); return t.value; }
+
  finishParameterList(){
   this.expect("(","Expected ( before parameter list");
   const params=[];
   if(this.check(")")){this.advance();return params}
   while(true){
    if(this.check(",")||this.check("eof"))throw new GlopParseError("Expected parameter",this.peek());
-   if(params.length>=this.maxParameters)throw new GlopParseError(`Maximum parameter count (${this.maxParameters}) exceeded`,this.peek(),"PARSE_LIMIT");   params.push(this.expect("identifier","Expected parameter name").value);
+   if(params.length>=this.maxParameters)throw new GlopParseError(`Maximum parameter count (${this.maxParameters}) exceeded`,this.peek(),"PARSE_LIMIT");   const pname=this.expect("identifier","Expected parameter name").value; let ptype=null; if(this.match(":")) ptype=this.parseTypeName(); params.push(pname);
    if(this.match(")"))break;
    this.expect(",","Expected , or ) after parameter");
    if(this.check(")")){this.advance();break}
@@ -254,7 +261,7 @@ export class Parser{
   if(this.match("number")||this.match("string"))return node("Literal",{value:t.value});
   if(this.match("WIZARD")){
    const params=this.finishParameterList();
-   return node("FunctionExpr",{name:"<anonymous>",params,body:this.block()});
+   return node("FunctionExpr",{name:"<anonymous>",params,returnType:null,paramTypes:null,body:this.block()});
   }\n  if(this.match("THIS"))return node("Identifier",{name:"THIS"});
   if(this.match("NEW")){ const callee=this.finishCallee(); const call=this.finishCall(callee); return node("New",{callee:call.callee,args:call.args}); }
   if(this.match("BASED"))return node("Literal",{value:true});

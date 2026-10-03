@@ -126,7 +126,10 @@ export class SemanticAnalyzer {
         const fn=new Scope(scope,"function");
         fn.returnType=n.returnType?this.typeName(n.returnType):TYPE.UNKNOWN; if(n.isMethod)fn.declare("THIS",{kind:"this",type:TYPE.UNKNOWN});
         for(const p of n.params) fn.declare(p,{kind:"parameter",type:TYPE.UNKNOWN});
-        this.predeclareFunctions(n.body,fn);\n        for(const s of n.body)this.statement(s,fn);\n        return TYPE.FUNCTION;\n      }
+        this.predeclareFunctions(n.body,fn);
+        for(const s of n.body)this.statement(s,fn);
+        return TYPE.FUNCTION;
+      }
       case "Member": this.expression(n.object,scope); return TYPE.UNKNOWN;
       case "Index": this.expression(n.object,scope); this.expression(n.index,scope); return TYPE.UNKNOWN;
       default: throw new GlopSemanticError(`Unknown expression node "${n.type}"`,"UNKNOWN_AST_NODE");

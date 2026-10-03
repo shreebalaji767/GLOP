@@ -125,6 +125,15 @@ try {
 
   throw new Error("unknown command: " + cmd);
 } catch (e) {
-  console.error("GLOP OOPSIE: " + e.message);
+  const line=Number.isInteger(e.line)?e.line:null;
+  const column=Number.isInteger(e.column)?e.column:null;
+  const code=e.code ? ` [${e.code}]` : "";
+  console.error(`GLOP OOPSIE${code}: ${e.message}`);
+  if(line!==null && column!==null && typeof source === "string"){
+    const lines=source.split(/\r?\n/);
+    const text=lines[line-1]??"";
+    console.error(`  ${line} | ${text}`);
+    console.error(`    | ${" ".repeat(Math.max(0,column-1))}^`);
+  }
   process.exit(1);
 }

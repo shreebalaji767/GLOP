@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.0 — function chaos
+
+- Added anonymous function expressions with `WIZARD(...) { ... }`.
+- Anonymous functions are real closures and can be stored in variables, returned from functions, and called with `BONK`.
+- Added semantic-analysis, JavaScript compiler, and bytecode VM coverage.
+
+
 ## 0.17.0 — language polish
 
 - Added `/* ... */` block comments.

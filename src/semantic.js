@@ -45,7 +45,7 @@ export class SemanticAnalyzer {
       case "ImportDecl": if(scope!==this.global) throw new GlopSemanticError("STEAL is only allowed at module scope","IMPORT_SCOPE"); return;
       case "ExportDecl": if(scope!==this.global) throw new GlopSemanticError("FLEX is only allowed at module scope","EXPORT_SCOPE"); for(const name of n.names) if(!scope.resolve(name)) throw new GlopSemanticError(`Cannot FLEX undefined name "${name}"`,"EXPORT_UNDEFINED"); return;
       case "VarDecl": { const type=this.expression(n.value,scope); scope.declare(n.name,{kind:"variable",type}); return; }
-      case "ClassDecl": { scope.declare(n.name,{kind:"class",type:TYPE.FUNCTION}); for(const m of n.methods){const fn=new Scope(scope,"function"); fn.declare("THIS",{kind:"this",type:TYPE.UNKNOWN}); for(const p of m.params)fn.declare(p,{kind:"parameter",type:TYPE.UNKNOWN}); this.predeclareFunctions(m.body,fn); for(const st of m.body)this.statement(st,fn);} return; }
+      case "ClassDecl": { if(n.parent){const p=scope.resolve(n.parent); if(!p) throw new GlopSemanticError(`Undefined parent class "${n.parent}"`,"UNDEFINED_NAME"); if(p.kind!=="class") throw new GlopSemanticError(`EXTENDS requires a CLASS, got ${p.type}`,"TYPE_ERROR");} scope.declare(n.name,{kind:"class",type:TYPE.FUNCTION,parent:n.parent}); for(const m of n.methods){const fn=new Scope(scope,"function"); fn.declare("THIS",{kind:"this",type:TYPE.UNKNOWN}); for(const p of m.params)fn.declare(p,{kind:"parameter",type:TYPE.UNKNOWN}); this.predeclareFunctions(m.body,fn); for(const st of m.body)this.statement(st,fn);} return; }
       case "FunctionDecl": {
         const fn=new Scope(scope,"function");
         for(const p of n.params) fn.declare(p,{kind:"parameter",type:TYPE.UNKNOWN});
@@ -106,7 +106,7 @@ export class SemanticAnalyzer {
         if(["==","!="].includes(n.op))return TYPE.BOOLEAN;
         this.requireBoolean(a,n.op);this.requireBoolean(b,n.op);return TYPE.BOOLEAN;
       }
-      case "New": { const ct=this.expression(n.callee,scope); if(ct!==TYPE.UNKNOWN&&ct!==TYPE.FUNCTION) throw new GlopSemanticError(`Cannot NEW a ${ct}`,"TYPE_ERROR"); for(const a of n.args)this.expression(a,scope); return TYPE.OBJECT; }
+      case "New": { const cb=n.callee.type==="Identifier"?scope.resolve(n.callee.name):null; const ct=this.expression(n.callee,scope); if(ct!==TYPE.UNKNOWN&&ct!==TYPE.FUNCTION) throw new GlopSemanticError(`Cannot NEW a ${ct}`,"TYPE_ERROR"); if(cb&&cb.kind!=="class") throw new GlopSemanticError(`NEW requires a CLASS, got ${cb.kind}`,"TYPE_ERROR"); for(const a of n.args)this.expression(a,scope); return TYPE.OBJECT; }
       case "Call": {
         const b=n.callee.type==="Identifier"?scope.resolve(n.callee.name):null;
         const ct=this.expression(n.callee,scope); if(ct!==TYPE.UNKNOWN&&ct!==TYPE.FUNCTION) throw new GlopSemanticError(`Cannot BONK a ${ct}`,"TYPE_ERROR");

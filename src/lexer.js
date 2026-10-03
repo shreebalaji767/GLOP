@@ -1,5 +1,5 @@
 export class GlopSyntaxError extends Error{constructor(message,line,column){super(`${message} at ${line}:${column}`);this.name="GlopSyntaxError";}}
-const keywords=new Set(["GLOP","YAP","SUS","NAH","SPIN","WIZARD","YEET","BASED","CAP","VOID","OOPSIE","TRY","CATCH","NOPE","ZOOM","STEAL","FLEX","NEW","THIS","CLASS","INIT","EXTENDS"]);
+const keywords=new Set(["GLOP","YAP","SUS","NAH","SPIN","WIZARD","YEET","BASED","CAP","VOID","OOPSIE","TRY","CATCH","NOPE","ZOOM","STEAL","FLEX","NEW","THIS","CLASS","INIT","EXTENDS","SUPER"]);
 export function lex(source){
  const tokens=[];let i=0,line=1,column=1;
  const builtinNames=new Set(["LEN","PUSH","POP","TYPE","TO_STRING","ABS","SQRT","FLOOR","CEIL","SUBSTR","UPPER","LOWER","HAS","KEYS","RANGE","NUMBER","MIN","MAX","POW","CLAMP","ASSERT","REPEAT","TRIM","REPLACE","SPLIT","JOIN","READ_FILE","WRITE_FILE","EXISTS","CWD","JOIN_PATH","ENV","ARGS","TIME_MS","SLEEP_MS","ROUND","RANDOM","JSON_PARSE","JSON_STRINGIFY","IS_NAN","IS_FINITE","INSTANCEOF"]);

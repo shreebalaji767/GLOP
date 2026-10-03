@@ -15,7 +15,8 @@ import { inspect } from "./inspect.js";
 
 const [, , cmd, file, ...rest] = process.argv;
 
-const VERSION = "0.21.0";
+const VERSION = "0.22.0";
+let source = "";
 
 const usage = `GLOP ${VERSION}
 
@@ -47,6 +48,32 @@ if (cmd === "repl") {
   await startRepl();
   process.exit(0);
 }
+
+if (cmd === "doctor") {
+  const checks = [
+    ["Node.js", Number(process.versions.node.split(".")[0]) >= 18, process.versions.node],
+    ["package.json", fs.existsSync("package.json"), "present"],
+    ["lexer", fs.existsSync(new URL("./lexer.js", import.meta.url)), "present"],
+    ["parser", fs.existsSync(new URL("./parser.js", import.meta.url)), "present"],
+    ["bytecode VM", fs.existsSync(new URL("./vm.js", import.meta.url)), "present"],
+    ["native runtime source", fs.existsSync(new URL("../runtime/native/glop.cpp", import.meta.url)), "present"]
+  ];
+  console.log("GLOP DOCTOR");
+  console.log("============");
+  let failed = 0;
+  for (const [name, ok, detail] of checks) {
+    console.log((ok ? "✓" : "✗") + " " + name + " — " + detail);
+    if (!ok) failed++;
+  }
+  console.log("");
+  if (failed) {
+    console.log("DIAGNOSIS: " + failed + " check(s) need attention.");
+    process.exit(1);
+  }
+  console.log("DIAGNOSIS: GLOP is ready to cause responsible chaos.");
+  process.exit(0);
+}
+
 
 
 

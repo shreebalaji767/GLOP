@@ -11,6 +11,7 @@ import {
   removeDependency,
   stringifyManifest
 } from "../src/project.js";
+import { ModuleLoader } from "../src/module-loader.js";
 
 const parsed = parseManifest(`[package]
 name = "demo"
@@ -35,5 +36,13 @@ const lock = installProject(app);
 assert.equal(lock.dependencies.dep.resolved, "../dep");
 removeDependency(app, "dep");
 assert.deepEqual(parseManifest(fs.readFileSync(path.join(app, "glop.toml"), "utf8")).dependencies, {});
+
+addDependency(app, "dep", "../dep");
+installProject(app);
+fs.writeFileSync(path.join(dep, "main.glop"), 'GLOP value = 42\nFLEX value\n');
+fs.writeFileSync(path.join(app, "main.glop"), 'STEAL «dep» AS dep\nYAP dep.value\n');
+const output = [];
+new ModuleLoader({ output: x => output.push(String(x)) }).runEntry(path.join(app, "main.glop"));
+assert.deepEqual(output, ["42"]);
 
 console.log("GLOP PROJECT TESTS PASSED.");

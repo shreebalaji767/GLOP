@@ -4,7 +4,7 @@ const jumpOps=new Set([OP.JUMP,OP.JUMP_IF_FALSE,OP.JUMP_IF_TRUE]);
 const terminalOps=new Set([OP.RETURN,OP.THROW,OP.HALT]);
 const nonNegativeArgs=new Set([
   OP.CONST,OP.MAKE_FUNCTION,OP.MAKE_CLOSURE,OP.LOAD_LOCAL,OP.STORE_LOCAL,
-  OP.LOAD_FREE,OP.STORE_FREE,OP.CALL,OP.CALL_METHOD,OP.MAKE_ARRAY,OP.MAKE_OBJECT,
+  OP.LOAD_FREE,OP.STORE_FREE,OP.CALL,OP.CALL_METHOD,OP.NEW,OP.MAKE_ARRAY,OP.MAKE_OBJECT,OP.MAKE_CLASS,
 ]);
 
 export class GlopBytecodeError extends Error {
@@ -68,6 +68,8 @@ function stackDelta(ins){
     case OP.SET_MEMBER:return -2;
     case OP.CALL:return -ins.arg;
     case OP.CALL_METHOD:return -(ins.arg+1);
+    case OP.NEW:return -ins.arg;
+    case OP.MAKE_CLASS:return 1-(ins.arg*2);
     case OP.ADD:
     case OP.SUB:
     case OP.MUL:

@@ -44,7 +44,26 @@ export class VM {
         case OP.SET_INDEX:{const value=this.pop(),index=this.pop(),object=this.pop();if(object==null)throw new GlopRuntimeError("cannot index "+object);try{object[index]=value;this.stack.push(value)}catch{throw new GlopRuntimeError("invalid index assignment")}break}
         case OP.GET_MEMBER:{const key=this.pop(),object=this.pop();if(object==null)throw new GlopRuntimeError("cannot access member of "+object);this.stack.push(object[key]);break}
         case OP.SET_MEMBER:{const value=this.pop(),key=this.pop(),object=this.pop();if(object==null)throw new GlopRuntimeError("cannot set member of "+object);object[key]=value;this.stack.push(value);break}
-        case OP.CALL:{const argc=ins.arg;if(this.stack.length<argc+1)throw new GlopRuntimeError("stack underflow during call");const args=this.stack.splice(this.stack.length-argc,argc);const callee=this.pop();if(typeof callee==="function"){try{this.stack.push(callee(args));}catch(e){this.raise(e);};break;}if(!(callee instanceof GlopFunction))throw new GlopRuntimeError("attempted to BONK a non-function");if(args.length!==callee.chunk.arity)throw new GlopRuntimeError(callee.chunk.name+" expected "+callee.chunk.arity+" argument(s), got "+args.length);this.frames.push({chunk:this.chunk,ip:this.ip,locals:this.locals,freeCells:this.freeCells,globals:this.globals});this.chunk=callee.chunk;this.ip=0;this.locals=args.map(value=>new GlopCell(value));this.freeCells=callee.freeCells;this.globals=callee.globals??this.globals;break}
+        case OP.CALL:{
+          const argc=ins.arg;if(this.stack.length<argc+1)throw new GlopRuntimeError("stack underflow during call");
+          const args=this.stack.splice(this.stack.length-argc,argc);const callee=this.pop();
+          if(typeof callee==="function"){try{this.stack.push(callee(args));}catch(e){this.raise(e);}break;}
+          if(!(callee instanceof GlopFunction))throw new GlopRuntimeError("attempted to BONK a non-function");
+          if(args.length!==callee.chunk.arity)throw new GlopRuntimeError(callee.chunk.name+" expected "+callee.chunk.arity+" argument(s), got "+args.length);
+          this.frames.push({chunk:this.chunk,ip:this.ip,locals:this.locals,freeCells:this.freeCells,globals:this.globals});
+          this.chunk=callee.chunk;this.ip=0;this.locals=[new GlopCell(null),...args.map(value=>new GlopCell(value))];this.freeCells=callee.freeCells;this.globals=callee.globals??this.globals;break;
+        }
+        case OP.CALL_METHOD:{
+          const argc=ins.arg;if(this.stack.length<argc+2)throw new GlopRuntimeError("stack underflow during method call");
+          const args=this.stack.splice(this.stack.length-argc,argc);const key=this.pop();const receiver=this.pop();
+          if(receiver==null)throw new GlopRuntimeError("cannot BONK a method on "+receiver);
+          let callee;try{callee=receiver[key];}catch{throw new GlopRuntimeError("cannot access method "+String(key));}
+          if(typeof callee==="function"){try{this.stack.push(callee.call(receiver,args));}catch(e){this.raise(e);}break;}
+          if(!(callee instanceof GlopFunction))throw new GlopRuntimeError("attempted to BONK a non-function member");
+          if(args.length!==callee.chunk.arity)throw new GlopRuntimeError(callee.chunk.name+" expected "+callee.chunk.arity+" argument(s), got "+args.length);
+          this.frames.push({chunk:this.chunk,ip:this.ip,locals:this.locals,freeCells:this.freeCells,globals:this.globals});
+          this.chunk=callee.chunk;this.ip=0;this.locals=[new GlopCell(receiver),...args.map(value=>new GlopCell(value))];this.freeCells=callee.freeCells;this.globals=callee.globals??this.globals;break;
+        }
         case OP.RETURN:{const value=this.pop();if(!this.frames.length)return value;const frame=this.frames.pop();this.handlers=this.handlers.filter(h=>h.frameDepth<this.frames.length+1);this.chunk=frame.chunk;this.ip=frame.ip;this.locals=frame.locals;this.freeCells=frame.freeCells;this.globals=frame.globals;this.stack.push(value);break}
         case OP.ADD:{const b=this.pop(),a=this.pop();this.stack.push(a+b);break} case OP.SUB:{const b=this.pop(),a=this.pop();this.stack.push(a-b);break} case OP.MUL:{const b=this.pop(),a=this.pop();this.stack.push(a*b);break} case OP.DIV:{const b=this.pop(),a=this.pop();this.stack.push(a/b);break} case OP.MOD:{const b=this.pop(),a=this.pop();this.stack.push(a%b);break}
         case OP.EQ:{const b=this.pop(),a=this.pop();this.stack.push(a===b);break} case OP.NE:{const b=this.pop(),a=this.pop();this.stack.push(a!==b);break} case OP.LT:{const b=this.pop(),a=this.pop();this.stack.push(a<b);break} case OP.LTE:{const b=this.pop(),a=this.pop();this.stack.push(a<=b);break} case OP.GT:{const b=this.pop(),a=this.pop();this.stack.push(a>b);break} case OP.GTE:{const b=this.pop(),a=this.pop();this.stack.push(a>=b);break}

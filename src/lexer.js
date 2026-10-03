@@ -2,7 +2,7 @@ export class GlopSyntaxError extends Error{constructor(message,line,column){supe
 const keywords=new Set(["GLOP","YAP","SUS","NAH","SPIN","WIZARD","YEET","BASED","CAP","VOID","OOPSIE","TRY","CATCH","NOPE","ZOOM","STEAL","FLEX","NEW","THIS"]);
 export function lex(source){
  const tokens=[];let i=0,line=1,column=1;
- const builtinNames=new Set(["LEN","PUSH","POP","TYPE","TO_STRING","ABS","SQRT","FLOOR","CEIL","SUBSTR","UPPER","LOWER","HAS","KEYS","RANGE","NUMBER","MIN","MAX","POW","CLAMP","ASSERT","REPEAT","TRIM","REPLACE","SPLIT","JOIN","READ_FILE","WRITE_FILE","EXISTS","CWD","JOIN_PATH","ENV","ARGS","TIME_MS","SLEEP_MS","INSTANCEOF"]);
+ const builtinNames=new Set(["LEN","PUSH","POP","TYPE","TO_STRING","ABS","SQRT","FLOOR","CEIL","SUBSTR","UPPER","LOWER","HAS","KEYS","RANGE","NUMBER","MIN","MAX","POW","CLAMP","ASSERT","REPEAT","TRIM","REPLACE","SPLIT","JOIN","READ_FILE","WRITE_FILE","EXISTS","CWD","JOIN_PATH","ENV","ARGS","TIME_MS","SLEEP_MS","ROUND","RANDOM","JSON_PARSE","JSON_STRINGIFY","IS_NAN","IS_FINITE","INSTANCEOF"]);
  const add=(type,value,l=line,c=column)=>tokens.push({type,value,line:l,column:c});
  const adv=()=>{const ch=source[i++];if(ch==="\n"){line++;column=1}else column++;return ch};
  while(i<source.length){

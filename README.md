@@ -237,3 +237,24 @@ YAP ROUND(3.7)
 YAP JSON_STRINGIFY(payload, 2)
 ```
 \n\n## GLOP 0.18 anonymous WIZARDs\n\nA WIZARD does not need a name when you want a function value:\n\n```glop\nGLOP add = WIZARD(a, b) {\n    YEET a + b\n}\n\nYAP BONK add(10, 20)\n```\n\nAnonymous WIZARDs are closures, so they can capture surrounding variables:\n\n```glop\nWIZARD makeDoubler(x) {\n    YEET WIZARD(value) {\n        YEET value * x\n    }\n}\n\nGLOP double = BONK makeDoubler(21)\nYAP BONK double(2)\n```\n\nThe bytecode VM and JavaScript compiler both support this feature. Named `WIZARD name(...) { ... }` functions remain unchanged.\n
+
+## GLOP 0.19 standard-library chaos
+
+More absurdly useful builtins are available:
+
+```glop
+GLOP nums = [5, 2, 9, 2, 5]
+
+YAP SUM(nums)
+YAP AVG(nums)
+YAP SORT(nums)
+YAP REVERSE(nums)
+YAP UNIQUE(nums)
+
+YAP CONTAINS(«banana», «nan»)
+YAP STARTS_WITH(«GLOP», «GL»)
+YAP ENDS_WITH(«GLOP», «OP»)
+YAP PAD_LEFT(«42», 5, «0»)
+```
+
+The collection helpers return new arrays, so the original array stays available for further chaos.

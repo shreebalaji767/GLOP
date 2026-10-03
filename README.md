@@ -1,4 +1,4 @@
-# GLOP 0.15
+# GLOP 0.16
 
 GLOP is a real programming language with ridiculous keywords and a serious compiler.
 
@@ -36,7 +36,7 @@ node src/cli.js build examples/hello.glop
 ./glop-runtime examples/hello.gbc
 \`\`\`
 
-GLOP 0.15 adds the GLOP Inspector plus debugger tooling for source-aware breakpoints, stepping diagnostics, locals, and call-stack reporting. It also retains VM tracing, bytecode verification, the JavaScript/native standard library surface, modules, closures, exceptions, a persistent REPL, GBC3 bytecode with GBC2 compatibility, a disassembler, source locations, and native runtime tooling.
+GLOP 0.16 adds a consistent JavaScript CLI version/help interface and keeps the GLOP Inspector plus debugger tooling for source-aware breakpoints, stepping diagnostics, locals, and call-stack reporting. It also retains VM tracing, bytecode verification, the JavaScript/native standard library surface, modules, closures, exceptions, a persistent REPL, GBC3 bytecode with GBC2 compatibility, a disassembler, source locations, and native runtime tooling.
 
 
 ## Dependency-free native GLOP
@@ -140,7 +140,7 @@ The analyzer intentionally keeps unknown for values whose type cannot yet be pro
 
 ## Modules
 
-GLOP 0.9 adds real source-module loading to the bytecode VM.
+GLOP 0.9 added real source-module loading to the bytecode VM.
 
 Import a module with an explicit alias:
 

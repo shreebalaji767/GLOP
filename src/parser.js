@@ -3,14 +3,17 @@ import{node as makeNode}from"./ast.js";
 const node=(type,props={})=>makeNode(type,{...props,loc:props.loc??Parser.currentLocation??null});
 
 export class GlopParseError extends Error{
- constructor(message,t){
+ constructor(message,t,code="PARSE_ERROR"){
   super(`${message} at ${t.line}:${t.column}`);
   this.name="GlopParseError";
+  this.code=code;
+  this.line=t.line;
+  this.column=t.column;
  }
 }
 
 export class Parser{
- constructor(tokens){this.tokens=tokens;this.i=0}
+ constructor(tokens,{maxExpressionDepth=1000}={}){this.tokens=tokens;this.i=0;this.maxExpressionDepth=maxExpressionDepth;this.expressionDepth=0}
  peek(){return this.tokens[this.i]}
  advance(){return this.tokens[this.i++]}
  prev(){return this.tokens[this.i-1]}
@@ -142,8 +145,13 @@ export class Parser{
  }
 
  expression(){
-  Parser.currentLocation={line:this.peek().line,column:this.peek().column};
-  return this.binary(0);
+  const t=this.peek();
+  Parser.currentLocation={line:t.line,column:t.column};
+  if(++this.expressionDepth>this.maxExpressionDepth){
+   this.expressionDepth--;
+   throw new GlopParseError(`Maximum expression nesting depth (${this.maxExpressionDepth}) exceeded`,t,"PARSE_LIMIT");
+  }
+  try{return this.binary(0)}finally{this.expressionDepth--}
  }
 
  binary(min){
@@ -287,4 +295,4 @@ export class Parser{
 }
 
 Parser.currentLocation=null;
-export const parse=tokens=>new Parser(tokens).parse();
+export const parse=(tokens,options)=>new Parser(tokens,options).parse();

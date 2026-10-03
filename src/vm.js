@@ -6,33 +6,7 @@ export class GlopCell { constructor(value=null){this.value=value} }
 export class GlopFunction { constructor(chunk,freeCells=[],globals=null){this.chunk=chunk;this.freeCells=freeCells;this.globals=globals} }
 
 export class VM {
-  async debugPrompt() {
-    if (!this.debugInput) return "continue";
-    const readline = await import("node:readline");
-    const rl = readline.createInterface({ input: process.stdin, output: this.debugOutput });
-    const ask = q => new Promise(resolve => rl.question(q, resolve));
-    while (true) {
-      const cmd = String(await ask("glop-debug> ")).trim();
-      const [op, ...args] = cmd.split(/\s+/);
-      if (op === "" || op === "c" || op === "continue") { rl.close(); return "continue"; }
-      if (op === "n" || op === "next") { rl.close(); return "step"; }
-      if (op === "s" || op === "step") { rl.close(); return "step"; }
-      if (op === "q" || op === "quit") { rl.close(); throw new GlopRuntimeError("debugger terminated execution"); }
-      if (op === "p" || op === "print") {
-        const name=args.join(" ");
-        if (!name) this.debugOutput(this.stack.slice(-10));
-        else if (this.locals) { const i=this.chunk.localNames?.[name]; if (i!==undefined && this.locals[i]) this.debugOutput(name+" = "+JSON.stringify(this.locals[i].value)); else if (this.globals.has(name)) this.debugOutput(name+" = "+JSON.stringify(this.globals.get(name))); else this.debugOutput("GLOP DEBUG: unknown variable "+name); }
-        continue;
-      }
-      if (op === "bt" || op === "where") {
-        this.debugOutput(this.frames.map((f,i)=>"#"+i+" "+(f.chunk.name||"<main>")+" @"+f.ip).concat("#"+this.frames.length+" "+(this.chunk.name||"<main>")+" @"+this.ip).join("\n")); continue;
-      }
-      if (op === "stack") { this.debugOutput(JSON.stringify(this.stack)); continue; }
-      if (op === "help" || op === "?") { this.debugOutput("c/continue  n/next  p [name]/print  bt/where  stack  q/quit"); continue; }
-      this.debugOutput("GLOP DEBUG: unknown command; try help");
-    }
-  }
-  constructor(bytecode,{output=console.log,globals=null,trace=false,traceOutput=console.error,breakpoints=[],debugOutput=console.error,debugInput=false}={}){this.bc=bytecode;this.stack=[];this.trace=trace;this.traceOutput=traceOutput;this.breakpoints=new Set(breakpoints);this.debugOutput=debugOutput;this.debugInput=debugInput;this.paused=false;this.stepMode=false;this.globals=globals??new Map(Object.entries(GLOP_STDLIB).map(([name,fn])=>[name,fn]));this.frames=[];this.handlers=[];this.ip=0;this.chunk=bytecode;this.locals=null;this.freeCells=[];this.output=output}
+  constructor(bytecode,{output=console.log,globals=null,trace=false,traceOutput=console.error,breakpoints=[],debugOutput=console.error,debugInput=false}={}){this.bc=bytecode;this.stack=[];this.trace=trace;this.traceOutput=traceOutput;this.breakpoints=new Set(breakpoints);this.debugOutput=debugOutput;this.debugStep=debugStep;this.paused=false;this.stepMode=false;this.globals=globals??new Map(Object.entries(GLOP_STDLIB).map(([name,fn])=>[name,fn]));this.frames=[];this.handlers=[];this.ip=0;this.chunk=bytecode;this.locals=null;this.freeCells=[];this.output=output}
   pop(){if(!this.stack.length)throw new GlopRuntimeError("stack underflow");return this.stack.pop()}
   currentConstants(){return this.chunk.constants}
   captureCell(name){if(this.locals&&this.chunk!==this.bc){const i=this.chunk.localNames?.[name];if(i!==undefined)return this.locals[i]}const fi=this.chunk.freeNames?.indexOf(name)??-1;if(fi>=0)return this.freeCells[fi];throw new GlopRuntimeError("cannot capture lexical name: "+name)}
@@ -51,7 +25,7 @@ export class VM {
   run(){
     while(true){
       if(this.ip>=this.chunk.code.length)throw new GlopRuntimeError("instruction pointer escaped bytecode");
-      const offset=this.ip;const ins=this.chunk.code[this.ip++];const line=ins.loc?.line??0;const column=ins.loc?.column??0;if(this.breakpoints.has(line)||(this.stepMode)){this.debugOutput("[GLOP BREAK] "+(this.chunk.name||"<main>")+" "+line+":"+column+" @"+offset+" "+ins.op);this.stepMode=false;if(this.debugInput){const mode=await this.debugPrompt();if(mode==="step")this.stepMode=true;}}if(this.trace){const p=ins.loc?` ${ins.loc.line}:${ins.loc.column}`:"";this.traceOutput(`[GLOP TRACE] ${this.chunk.name||"<main>"}${p} @${offset} ${ins.op}${ins.arg===null||ins.arg===undefined?"":" "+ins.arg} | stack=${this.stack.length}`);}
+      const offset=this.ip;const ins=this.chunk.code[this.ip++];const line=ins.loc?.line??0;const column=ins.loc?.column??0;if(this.breakpoints.has(line)||this.debugStep||this.stepMode){this.debugOutput("[GLOP DEBUG] "+(this.chunk.name||"<main>")+" "+line+":"+column+" @"+offset+" "+ins.op);if(this.locals){const vars=Object.entries(this.chunk.localNames||{}).sort((a,b)=>Number(a[1])-Number(b[1])).map(([name,i])=>name+"="+JSON.stringify(this.locals[i]?.value));if(vars.length)this.debugOutput("  locals: "+vars.join(", "));}if(this.frames.length)this.debugOutput("  call stack: "+this.frames.map(f=>f.chunk.name||"<main>").concat(this.chunk.name||"<main>").join(" -> "));this.stepMode=false;}if(this.trace){const p=ins.loc?` ${ins.loc.line}:${ins.loc.column}`:"";this.traceOutput(`[GLOP TRACE] ${this.chunk.name||"<main>"}${p} @${offset} ${ins.op}${ins.arg===null||ins.arg===undefined?"":" "+ins.arg} | stack=${this.stack.length}`);}
       switch(ins.op){
         case OP.CONST:this.stack.push(this.currentConstants()[ins.arg]);break;
         case OP.LOAD_GLOBAL:if(!this.globals.has(ins.arg))throw new GlopRuntimeError("undefined variable: "+ins.arg);this.stack.push(this.globals.get(ins.arg));break;
@@ -84,4 +58,4 @@ export class VM {
 }
 export const runBytecode=(bytecode,options)=>new VM(bytecode,options).run();
 
-export const debugBytecode=(bytecode,options={})=>new VM(bytecode,{...options,trace:false,debugInput:true}).run();
+export const debugBytecode=(bytecode,options={})=>new VM(bytecode,{...options,trace:false}).run();

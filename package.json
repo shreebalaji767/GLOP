@@ -1,6 +1,6 @@
 {
   "name": "glop-language",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "type": "module",
   "description": "GLOP — an absurd but real programming language.",
   "bin": {

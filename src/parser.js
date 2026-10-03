@@ -23,7 +23,7 @@ export class Parser{
 
  parse(){
   const body=[];
-  while(!this.check("eof")){if(++this.statementCount>this.maxStatements)throw new GlopParseError(`Maximum statement count (${this.maxStatements}) exceeded`,this.peek(),"PARSE_LIMIT");body.push(this.statement())}
+  while(!this.check("eof"))body.push(this.statement())
   return node("Program",{body});
  }
 
@@ -36,6 +36,7 @@ export class Parser{
  }
 
  statement(){
+  if(++this.statementCount>this.maxStatements)throw new GlopParseError(`Maximum statement count (${this.maxStatements}) exceeded`,this.peek(),"PARSE_LIMIT");
   const t=this.peek();
   Parser.currentLocation={line:t.line,column:t.column};
 

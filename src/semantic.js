@@ -47,7 +47,6 @@ export class SemanticAnalyzer {
       case "VarDecl": { const type=this.expression(n.value,scope); scope.declare(n.name,{kind:"variable",type}); return; }
       case "FunctionDecl": {
         const fn=new Scope(scope,"function");
-        fn.declare("THIS",{kind:"this",type:TYPE.UNKNOWN});
         for(const p of n.params) fn.declare(p,{kind:"parameter",type:TYPE.UNKNOWN});
         this.predeclareFunctions(n.body,fn);
         for(const s of n.body)this.statement(s,fn);
@@ -117,7 +116,7 @@ export class SemanticAnalyzer {
       case "Object": for(const p of n.properties)this.expression(p.value,scope); return TYPE.OBJECT;
       case "FunctionExpr": {
         const fn=new Scope(scope,"function");
-        fn.declare("THIS",{kind:"this",type:TYPE.UNKNOWN});\n        for(const p of n.params) fn.declare(p,{kind:"parameter",type:TYPE.UNKNOWN});\n        this.predeclareFunctions(n.body,fn);\n        for(const s of n.body)this.statement(s,fn);\n        return TYPE.FUNCTION;\n      }
+        if(n.isMethod)fn.declare("THIS",{kind:"this",type:TYPE.UNKNOWN});\n        for(const p of n.params) fn.declare(p,{kind:"parameter",type:TYPE.UNKNOWN});\n        this.predeclareFunctions(n.body,fn);\n        for(const s of n.body)this.statement(s,fn);\n        return TYPE.FUNCTION;\n      }
       case "Member": this.expression(n.object,scope); return TYPE.UNKNOWN;
       case "Index": this.expression(n.object,scope); this.expression(n.index,scope); return TYPE.UNKNOWN;
       default: throw new GlopSemanticError(`Unknown expression node "${n.type}"`,"UNKNOWN_AST_NODE");

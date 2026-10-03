@@ -46,6 +46,7 @@ export class SemanticAnalyzer {
       case "VarDecl": { const type=this.expression(n.value,scope); scope.declare(n.name,{kind:"variable",type}); return; }
       case "FunctionDecl": {
         const fn=new Scope(scope,"function");
+        fn.declare("THIS",{kind:"this",type:TYPE.UNKNOWN});
         for(const p of n.params) fn.declare(p,{kind:"parameter",type:TYPE.UNKNOWN});
         this.predeclareFunctions(n.body,fn);
         for(const s of n.body)this.statement(s,fn);

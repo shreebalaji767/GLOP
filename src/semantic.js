@@ -111,6 +111,7 @@ export class SemanticAnalyzer {
         if(["==","!="].includes(n.op))return TYPE.BOOLEAN;
         this.requireBoolean(a,n.op);this.requireBoolean(b,n.op);return TYPE.BOOLEAN;
       }
+      case "SuperMember": { const b=scope.resolve("THIS"); if(!b) throw new GlopSemanticError("SUPER can only be used inside a class method","SUPER_OUTSIDE_CLASS"); return TYPE.FUNCTION; }
       case "New": { const cb=n.callee.type==="Identifier"?scope.resolve(n.callee.name):null; const ct=this.expression(n.callee,scope); if(ct!==TYPE.UNKNOWN&&ct!==TYPE.FUNCTION) throw new GlopSemanticError(`Cannot NEW a ${ct}`,"TYPE_ERROR"); if(cb&&cb.kind!=="class") throw new GlopSemanticError(`NEW requires a CLASS, got ${cb.kind}`,"TYPE_ERROR"); for(const a of n.args)this.expression(a,scope); return TYPE.OBJECT; }
       case "Call": {
         const b=n.callee.type==="Identifier"?scope.resolve(n.callee.name):null;

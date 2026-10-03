@@ -16,10 +16,21 @@ import { inspect } from "./inspect.js";
 const [, , cmd, file, ...rest] = process.argv;
 
 const VERSION = "0.16.0";
+
+const usage = `GLOP ${VERSION}
+
+  glop run <file.glop|file.gbc>
+  glop repl
+  glop compile <file.glop> [-o out.mjs]
+  glop check <file.glop>
+  glop build <file.glop> [-o out.gbc]
+  glop tokens <file.glop>
+  glop dump <file.glop|file.gbc>\n  glop trace <file.glop|file.gbc>\n  glop verify <file.gbc>\n  glop inspect <file.glop|file.gbc> [--json]\n  glop debug <file.glop|file.gbc> [--break N] [--step]
+  glop --version
+  glop --help`;
+
 const HELP_FLAGS = new Set(["help", "--help", "-h"]);
 const VERSION_FLAGS = new Set(["version", "--version", "-v"]);
-
-let source = "";
 
 if (VERSION_FLAGS.has(cmd)) {
   console.log(`GLOP ${VERSION}`);
@@ -37,15 +48,7 @@ if (cmd === "repl") {
   process.exit(0);
 }
 
-const usage = `GLOP ${VERSION}
 
-  glop run <file.glop|file.gbc>
-  glop repl
-  glop compile <file.glop> [-o out.mjs]
-  glop check <file.glop>
-  glop build <file.glop> [-o out.gbc]
-  glop tokens <file.glop>
-  glop dump <file.glop|file.gbc>\n  glop trace <file.glop|file.gbc>\n  glop verify <file.gbc>\n  glop inspect <file.glop|file.gbc> [--json]\n  glop debug <file.glop|file.gbc> [--break N] [--step]`;
 
 if (cmd === "debug") {
   if (!file) { console.log(usage); process.exit(1); }

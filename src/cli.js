@@ -33,7 +33,13 @@ const usage = `GLOP 0.14.0
   glop tokens <file.glop>
   glop dump <file.glop|file.gbc>\n  glop trace <file.glop|file.gbc>\n  glop verify <file.gbc>\n  glop inspect <file.glop|file.gbc> [--json]`;
 
-if (cmd === "inspect") {\n  if (!file) { console.log(usage); process.exit(1); }\n  try { inspect(file, { json: rest.includes("--json") }); process.exit(0); }\n  catch (e) { console.error(`GLOP OOPSIE: ${e.message}`); process.exit(1); }\n}\n\nif (!cmd || !file) {
+if (cmd === "inspect") {
+  if (!file) { console.log(usage); process.exit(1); }
+  try { inspect(file, { json: rest.includes("--json") }); process.exit(0); }
+  catch (e) { console.error(`GLOP OOPSIE: ${e.message}`); process.exit(1); }
+}
+
+if (!cmd || !file) {
   console.log(usage);
   process.exit(cmd ? 1 : 0);
 }

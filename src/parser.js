@@ -90,10 +90,10 @@ export class Parser{
 
   if(this.match("WIZARD")){
    const name=this.expect("identifier","Expected function name").value;
-   const params=this.finishParameterList();
+   const params=this.finishParameterList(); const paramTypes=this.lastParamTypes;
    let returnType=null;
    if(this.match(":")) returnType=this.parseTypeName();
-   return node("FunctionDecl",{name,params,returnType,body:this.block()});
+   return node("FunctionDecl",{name,params,paramTypes,returnType,body:this.block()});
   }
   if(this.match("CLASS")){
    const name=this.expect("identifier","Expected class name").value;
@@ -105,8 +105,8 @@ export class Parser{
     const kind=this.match("INIT")?"INIT":(this.match("WIZARD")?"WIZARD":null);
     if(!kind)throw new GlopParseError("Expected INIT or WIZARD inside CLASS",this.peek());
     const methodName=kind==="INIT"?"INIT":this.expect("identifier","Expected method name").value;
-    const params=this.finishParameterList();
-    methods.push(node("FunctionExpr",{name:methodName,params,body:this.block(),isMethod:true,isInitializer:kind==="INIT"}));
+    const params=this.finishParameterList(); const paramTypes=this.lastParamTypes;
+    methods.push(node("FunctionExpr",{name:methodName,params,paramTypes,body:this.block(),isMethod:true,isInitializer:kind==="INIT"}));
    }
    this.expect("}","Expected } to close class");
    return node("ClassDecl",{name,parent,methods});
@@ -156,11 +156,11 @@ export class Parser{
 
  finishParameterList(){
   this.expect("(","Expected ( before parameter list");
-  const params=[];
-  if(this.check(")")){this.advance();return params}
+  const params=[]; const paramTypes=[];
+  if(this.check(")")){this.advance();this.lastParamTypes=[];return params}
   while(true){
    if(this.check(",")||this.check("eof"))throw new GlopParseError("Expected parameter",this.peek());
-   if(params.length>=this.maxParameters)throw new GlopParseError(`Maximum parameter count (${this.maxParameters}) exceeded`,this.peek(),"PARSE_LIMIT");   const pname=this.expect("identifier","Expected parameter name").value; let ptype=null; if(this.match(":")) ptype=this.parseTypeName(); params.push(pname);
+   if(params.length>=this.maxParameters)throw new GlopParseError(`Maximum parameter count (${this.maxParameters}) exceeded`,this.peek(),"PARSE_LIMIT");   const pname=this.expect("identifier","Expected parameter name").value; let ptype=null; if(this.match(":")) ptype=this.parseTypeName(); params.push(pname); paramTypes.push(ptype);
    if(this.match(")"))break;
    this.expect(",","Expected , or ) after parameter");
    if(this.check(")")){this.advance();break}

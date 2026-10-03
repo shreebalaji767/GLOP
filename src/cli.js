@@ -15,7 +15,7 @@ import { inspect } from "./inspect.js";
 
 const [, , cmd, file, ...rest] = process.argv;
 
-const VERSION = "0.22.0";
+const VERSION = "0.23.0";
 let source = "";
 
 const usage = `GLOP ${VERSION}
@@ -47,6 +47,90 @@ if (cmd === "repl") {
   const { startRepl } = await import("./repl.js");
   await startRepl();
   process.exit(0);
+}
+
+if (cmd === "fmt") {
+  if (!file) { console.log(usage); process.exit(1); }
+  try {
+    source = fs.readFileSync(file, "utf8");
+    const tokens = lex(source);
+    const ast = parse(tokens);
+    const lines = [];
+    const emit = (s, depth = 0) => lines.push("    ".repeat(depth) + s);
+    const lit = v => typeof v === "string" ? "«" + v.replace(/«/g, "\\«").replace(/»/g, "\\»") + "»" : String(v);
+    const expr = e => {
+      if (!e) return "";
+      if (e.type === "Literal") return e.value === null ? "VOID" : lit(e.value);
+      if (e.type === "Identifier") return e.name;
+      if (e.type === "Array") return "[" + e.elements.map(expr).join(", ") + "]";
+      if (e.type === "Object") return "{ " + e.properties.map(p => p.key + ": " + expr(p.value)).join(", ") + " }";
+      if (e.type === "Unary") return e.op + expr(e.argument);
+      if (e.type === "Binary") return expr(e.left) + " " + e.op + " " + expr(e.right);
+      if (e.type === "Member") return expr(e.object) + "." + e.property;
+      if (e.type === "Index") return expr(e.object) + "[" + expr(e.index) + "]";
+      if (e.type === "Call") return "BONK " + expr(e.callee) + "(" + e.args.map(expr).join(", ") + ")";
+      if (e.type === "New") return "NEW " + expr(e.callee) + "(" + e.args.map(expr).join(", ") + ")";
+      return "<expression>";
+    };
+    const stmt = (s, depth = 0) => {
+      if (s.type === "VarDecl") { emit("GLOP " + s.name + (s.declaredType ? ":" + s.declaredType : "") + " = " + expr(s.value), depth); return; }
+      if (s.type === "Print") { emit("YAP " + expr(s.expression), depth); return; }
+      if (s.type === "ExpressionStatement") { emit(expr(s.expression), depth); return; }
+      if (s.type === "Assignment") { emit(expr(s.target) + " " + s.op + " " + expr(s.value), depth); return; }
+      if (s.type === "Return") { emit("YEET " + expr(s.value), depth); return; }
+      if (s.type === "Break") { emit("NOPE", depth); return; }
+      if (s.type === "Continue") { emit("ZOOM", depth); return; }
+      if (s.type === "Throw") { emit("OOPSIE " + expr(s.value), depth); return; }
+      if (s.type === "ImportDecl") { emit('STEAL «' + s.path + '» AS ' + s.alias, depth); return; }
+      if (s.type === "ExportDecl") { emit("FLEX " + s.names.join(", "), depth); return; }
+      if (s.type === "If") { emit("SUS " + expr(s.test) + " {", depth); s.consequent.forEach(x => stmt(x, depth + 1)); emit("}" + (s.alternate ? " NAH {" : ""), depth); if (s.alternate) { s.alternate.forEach(x => stmt(x, depth + 1)); emit("}", depth); } return; }
+      if (s.type === "While") { emit("SPIN " + expr(s.test) + " {", depth); s.body.forEach(x => stmt(x, depth + 1)); emit("}", depth); return; }
+      if (s.type === "FunctionDecl") { emit("WIZARD " + s.name + "(" + s.params.map((p,i) => p + (s.paramTypes?.[i] ? ":" + s.paramTypes[i] : "")).join(", ") + ")" + (s.returnType ? ":" + s.returnType : "") + " {", depth); s.body.forEach(x => stmt(x, depth + 1)); emit("}", depth); return; }
+      emit("// formatter could not reconstruct " + s.type, depth);
+    };
+    ast.body.forEach(s => stmt(s));
+    const formatted = lines.join("\n") + "\n";
+    const oi = rest.indexOf("-o");
+    if (oi >= 0 && !rest[oi + 1]) throw new Error("missing output path after -o");
+    const out = oi >= 0 ? rest[oi + 1] : file;
+    fs.writeFileSync(out, formatted);
+    console.log("GLOP formatted -> " + out);
+    process.exit(0);
+  } catch (e) { console.error("GLOP FORMAT ERROR: " + e.message); process.exit(1); }
+}
+
+if (cmd === "lint") {
+  if (!file) { console.log(usage); process.exit(1); }
+  try {
+    source = fs.readFileSync(file, "utf8");
+    const ast = parse(lex(source));
+    const warnings = [];
+    const declared = new Set();
+    const walkExpr = e => {
+      if (!e) return;
+      if (e.type === "Identifier" && !declared.has(e.name) && !["THIS","SUPER"].includes(e.name)) warnings.push(`possibly undefined identifier "${e.name}"`);
+      if (e.type === "Binary") { walkExpr(e.left); walkExpr(e.right); }
+      if (e.type === "Unary") walkExpr(e.argument);
+      if (e.type === "Call" || e.type === "New") { walkExpr(e.callee); e.args.forEach(walkExpr); }
+      if (e.type === "Member") walkExpr(e.object);
+      if (e.type === "Index") { walkExpr(e.object); walkExpr(e.index); }
+      if (e.type === "Array") e.elements.forEach(walkExpr);
+      if (e.type === "Object") e.properties.forEach(p => walkExpr(p.value));
+    };
+    const walk = s => {
+      if (s.type === "VarDecl") { walkExpr(s.value); declared.add(s.name); }
+      else if (s.type === "Print" || s.type === "ExpressionStatement") walkExpr(s.expression);
+      else if (s.type === "Assignment") { walkExpr(s.target); walkExpr(s.value); }
+      else if (s.type === "Return" || s.type === "Throw") walkExpr(s.value);
+      else if (s.type === "If") { walkExpr(s.test); s.consequent.forEach(walk); s.alternate?.forEach(walk); }
+      else if (s.type === "While") { walkExpr(s.test); s.body.forEach(walk); }
+      else if (s.type === "FunctionDecl") { const old = new Set(declared); s.params.forEach(p => declared.add(p)); s.body.forEach(walk); declared.clear(); old.forEach(x => declared.add(x)); }
+    };
+    ast.body.forEach(walk);
+    if (warnings.length) { for (const w of warnings) console.log("GLOP LINT: warning: " + w); process.exitCode = 1; }
+    else console.log("GLOP LINT: clean");
+    process.exit(0);
+  } catch (e) { console.error("GLOP LINT ERROR: " + e.message); process.exit(1); }
 }
 
 if (cmd === "doctor") {

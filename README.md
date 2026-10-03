@@ -1,4 +1,4 @@
-# GLOP 0.17
+# GLOP 0.18
 
 GLOP is a real programming language with ridiculous keywords and a serious compiler.
 
@@ -36,7 +36,7 @@ node src/cli.js build examples/hello.glop
 ./glop-runtime examples/hello.gbc
 \`\`\`
 
-GLOP 0.17 adds a consistent JavaScript CLI version/help interface and keeps the GLOP Inspector plus debugger tooling for source-aware breakpoints, stepping diagnostics, locals, and call-stack reporting. It also retains VM tracing, bytecode verification, the JavaScript/native standard library surface, modules, closures, exceptions, a persistent REPL, GBC3 bytecode with GBC2 compatibility, a disassembler, source locations, and native runtime tooling.
+GLOP 0.18 adds anonymous function expressions on top of the existing closure system. You can now create a WIZARD without naming it, store it in a variable, return it from another WIZARD, and call it later.\n\nGLOP 0.17 added a consistent JavaScript CLI version/help interface and keeps the GLOP Inspector plus debugger tooling for source-aware breakpoints, stepping diagnostics, locals, and call-stack reporting. It also retains VM tracing, bytecode verification, the JavaScript/native standard library surface, modules, closures, exceptions, a persistent REPL, GBC3 bytecode with GBC2 compatibility, a disassembler, source locations, and native runtime tooling.
 
 
 ## Dependency-free native GLOP
@@ -236,3 +236,4 @@ YAP payload.name
 YAP ROUND(3.7)
 YAP JSON_STRINGIFY(payload, 2)
 ```
+\n\n## GLOP 0.18 anonymous WIZARDs\n\nA WIZARD does not need a name when you want a function value:\n\n```glop\nGLOP add = WIZARD(a, b) {\n    YEET a + b\n}\n\nYAP BONK add(10, 20)\n```\n\nAnonymous WIZARDs are closures, so they can capture surrounding variables:\n\n```glop\nWIZARD makeDoubler(x) {\n    YEET WIZARD(value) {\n        YEET value * x\n    }\n}\n\nGLOP double = BONK makeDoubler(21)\nYAP BONK double(2)\n```\n\nThe bytecode VM and JavaScript compiler both support this feature. Named `WIZARD name(...) { ... }` functions remain unchanged.\n

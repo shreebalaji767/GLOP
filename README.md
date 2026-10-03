@@ -242,6 +242,27 @@ YAP JSON_STRINGIFY(payload, 2)
 
 
 
+## GLOP 0.21 classes
+
+GLOP now supports classes, constructors, instances, and methods:
+
+```glop
+CLASS Dog {
+    INIT(name) {
+        THIS.name = name
+    }
+
+    WIZARD bark() {
+        YEET «BORK » + THIS.name
+    }
+}
+
+GLOP dog = NEW Dog(«BOB»)
+YAP BONK dog.bark()
+```
+
+`INIT` runs automatically when `NEW` creates an instance. Methods receive the instance as `THIS`.
+
 ## GLOP 0.20 object chaos
 
 Objects can now contain real methods. When a method is called through an object, GLOP binds that object to THIS:

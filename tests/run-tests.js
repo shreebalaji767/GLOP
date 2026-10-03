@@ -22,6 +22,11 @@ assert.throws(() => parse(lex("YAP [1,,2]")), /Expected array element/);
 assert.throws(() => parse(lex("YAP {name:«RAVI»,,age:25}")), /Expected object property/);
 const deep="YAP "+"(".repeat(1100)+"1"+")".repeat(1100);
 assert.throws(() => parse(lex(deep),{maxExpressionDepth:1000}), e => e.code === "PARSE_LIMIT");
+assert.throws(() => parse(lex("YAP BONK f(1,2,3)"),{maxCallArgs:2}), e => e.code === "PARSE_LIMIT");
+assert.throws(() => parse(lex("YAP [1,2,3]"),{maxArrayElements:2}), e => e.code === "PARSE_LIMIT");
+assert.throws(() => parse(lex("YAP {a:1,b:2,c:3}"),{maxObjectProperties:2}), e => e.code === "PARSE_LIMIT");
+assert.throws(() => parse(lex("WIZARD f(a,b,c){YEET a}"),{maxParameters:2}), e => e.code === "PARSE_LIMIT");
+assert.throws(() => parse(lex("YAP 1\nYAP 2\nYAP 3"),{maxStatements:2}), e => e.code === "PARSE_LIMIT");
 
 check("GLOP x=10\nYAP x");
 assert.throws(() => check("YAP missing"), e => e instanceof GlopSemanticError && e.code === "UNDEFINED_NAME");

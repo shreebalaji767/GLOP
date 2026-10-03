@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.21.0 — Classes arrive
+
+- Added `CLASS` declarations.
+- Added `INIT(...)` constructors.
+- Added `NEW` instance creation.
+- Added class methods with `THIS` receiver binding.
+- Added bytecode `MAKE_CLASS` and `NEW` operations.
+- Added JavaScript compiler support for classes.
+- Added constructor, instance-method, and mutable-instance regression tests.
+
 ## 0.20.0 — object chaos
 
 - Added receiver-aware object method calls with `BONK object.method(...)`.

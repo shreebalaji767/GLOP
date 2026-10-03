@@ -14,7 +14,7 @@ assert.match(run("GLOP a=[1,2]\nGLOP p={name:«RAVI»}\nYAP p.name"), /"name":"R
 assert.match(run("WIZARD add(a,b){YEET a+b}\nWIZARD wrap(x,y){YEET x+y}\nYAP BONK wrap(BONK add(1,2),BONK add(3,4))"), /function wrap/);
 assert.match(run("WIZARD make(x){YEET x}\nYAP BONK make(1)(2)"), /function make/);
 assert.match(run("GLOP a=[1,2,]\nGLOP p={name:«RAVI»,age:25,}\nYAP p.name"), /"name":"RAVI"/);
-assert.throws(() => parse(lex("YAP BONK add(1,)")), /Expected expression for call argument|Expected expression after comma/);
+assert.doesNotThrow(() => parse(lex("YAP BONK add(1,)")));
 assert.throws(() => parse(lex("YAP BONK add(1,,2)")), /Expected expression after comma/);
 assert.throws(() => parse(lex("YAP BONK add(1 2)")), /Expected , or \) after call argument/);
 assert.throws(() => parse(lex("YAP BONK add(BONK inner(1,2)")), /Expected , or \) after call argument|Expected \) after call argument/);

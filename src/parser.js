@@ -236,7 +236,7 @@ export class Parser{
   const t=this.peek();
 
   if(this.match("number")||this.match("string"))return node("Literal",{value:t.value});
-  if(this.match("WIZARD")){\n   const params=this.finishParameterList();\n   return node("FunctionExpr",{name:"<anonymous>",params,body:this.block()});\n  }\n  if(this.match("BASED"))return node("Literal",{value:true});
+  if(this.match("WIZARD")){\n   const params=this.finishParameterList();\n   return node("FunctionExpr",{name:"<anonymous>",params,body:this.block()});\n  }\n  if(this.match("THIS"))return node("Identifier",{name:"THIS"});\n  if(this.match("BASED"))return node("Literal",{value:true});
   if(this.match("CAP"))return node("Literal",{value:false});
   if(this.match("VOID"))return node("Literal",{value:null});
 

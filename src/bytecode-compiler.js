@@ -125,7 +125,7 @@ export class BytecodeCompiler {
         const op={"+":OP.ADD,"-":OP.SUB,"*":OP.MUL,"/":OP.DIV,"%":OP.MOD,"==":OP.EQ,"!=":OP.NE,"<":OP.LT,"<=":OP.LTE,">":OP.GT,">=":OP.GTE}[n.op];
         if(!op)throw new Error("Unsupported binary operator: "+n.op);this.b.emit(op);break;
       }
-      case"Call":this.expr(n.callee);for(const arg of n.args)this.expr(arg);this.b.emit(OP.CALL,n.args.length);break;
+      case"Call":this.expr(n.callee);for(const arg of n.args)this.expr(arg);this.b.emit(OP.CALL,n.args.length);break;\n      case"FunctionExpr":{const chunk=this.compileFunction(n),index=this.b.addFunction(chunk);this.b.emit(OP.MAKE_CLOSURE,index);break;}
       case"Array":for(const e of n.elements)this.expr(e);this.b.emit(OP.MAKE_ARRAY,n.elements.length);break;
       case"Object":for(const p of n.properties){this.b.emit(OP.CONST,this.b.constant(p.key));this.expr(p.value)}this.b.emit(OP.MAKE_OBJECT,n.properties.length);break;
       case"Index":this.expr(n.object);this.expr(n.index);this.b.emit(OP.GET_INDEX);break;

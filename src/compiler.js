@@ -21,6 +21,7 @@ export class Compiler{
  case"Literal":return JSON.stringify(n.value);case"Identifier":return n.name;
  case"Unary":return`(${n.op}${this.expr(n.argument)})`;case"Binary":return`(${this.expr(n.left)} ${n.op} ${this.expr(n.right)})`;
  case"New":return`new ${this.expr(n.callee)}(${n.args.map(x=>this.expr(x)).join(",")})`;
+ case"SuperMember":return`super.${n.property}`;
  case"Call":return`${this.expr(n.callee)}(${n.args.map(x=>this.expr(x)).join(",")})`;
  case"FunctionExpr":return`function(${n.params.join(",")}){\n${ind(n.body.map(x=>this.statement(x)).join("\n"))}\n}`;
  case"Index":return`${this.expr(n.object)}[${this.expr(n.index)}]`;

@@ -10,7 +10,7 @@ const check = s => analyze(parse(lex(s)));
 assert.match(run("GLOP x = 10\nYAP x+2"), /let x=10/);
 assert.equal(lex("YAP 1e3")[1].value,1000);
 assert.doesNotThrow(() => lex("/* GLOP is chaos */ YAP 42"));
-assert.match(run("WIZARD add(a,b){YEET a+b}\nYAP BONK add(2,3)"), /function add/);
+assert.match(run("GLOP add=WIZARD(a,b){YEET a+b}\nYAP BONK add(2,3)"), new RegExp("function\\\\(a,b\\\\)"));
 assert.match(run("GLOP add=WIZARD(a,b){YEET a+b}\nYAP BONK add(2,3)"), /function\\(a,b\\)/);
 assert.match(run("GLOP x=0\nSPIN x<3{x+=1}"), /while/);
 assert.match(run("GLOP a=[1,2]\nGLOP p={name:«RAVI»}\nYAP p.name"), /"name":"RAVI"/);

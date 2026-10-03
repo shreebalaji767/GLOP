@@ -61,7 +61,6 @@ export class Parser{
 
   if(this.match("GLOP")){
    const name=this.expect("identifier","Expected variable name").value;
-   this.expect("=","Expected = after variable name");
    let declaredType=null;
    if(this.match(":")) declaredType=this.parseTypeName();
    this.expect("=","Expected = after variable declaration");

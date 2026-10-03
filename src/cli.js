@@ -15,7 +15,21 @@ import { inspect } from "./inspect.js";
 
 const [, , cmd, file, ...rest] = process.argv;
 
+const VERSION = "0.16.0";
+const HELP_FLAGS = new Set(["help", "--help", "-h"]);
+const VERSION_FLAGS = new Set(["version", "--version", "-v"]);
+
 let source = "";
+
+if (VERSION_FLAGS.has(cmd)) {
+  console.log(`GLOP ${VERSION}`);
+  process.exit(0);
+}
+
+if (HELP_FLAGS.has(cmd)) {
+  console.log(usage);
+  process.exit(0);
+}
 
 if (cmd === "repl") {
   const { startRepl } = await import("./repl.js");
@@ -23,7 +37,7 @@ if (cmd === "repl") {
   process.exit(0);
 }
 
-const usage = `GLOP 0.14.0
+const usage = `GLOP ${VERSION}
 
   glop run <file.glop|file.gbc>
   glop repl

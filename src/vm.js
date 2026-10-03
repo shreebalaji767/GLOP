@@ -4,6 +4,8 @@ import { GLOP_STDLIB } from "./stdlib.js";
 export class GlopRuntimeError extends Error { constructor(message){super("GLOP RUNTIME OOPSIE: "+message);this.name="GlopRuntimeError"} }
 export class GlopCell { constructor(value=null){this.value=value} }
 export class GlopFunction { constructor(chunk,freeCells=[],globals=null){this.chunk=chunk;this.freeCells=freeCells;this.globals=globals} }
+export class GlopClass { constructor(name,methods={}){this.name=name;this.methods=methods} }
+const glopInstance=(klass)=>{const o=Object.create(null);Object.defineProperty(o,"__glopClass",{value:klass,enumerable:false});for(const [k,v] of Object.entries(klass.methods))if(k!=="INIT")o[k]=v;return o};
 
 export class VM {
   constructor(bytecode,{output=console.log,globals=null,trace=false,traceOutput=console.error,breakpoints=[],debugOutput=console.error,debugInput=false}={}){this.bc=bytecode;this.stack=[];this.trace=trace;this.traceOutput=traceOutput;this.breakpoints=new Set(breakpoints);this.debugOutput=debugOutput;this.debugStep=false;this.paused=false;this.stepMode=false;this.globals=globals??new Map(Object.entries(GLOP_STDLIB).map(([name,fn])=>[name,fn]));this.frames=[];this.handlers=[];this.ip=0;this.chunk=bytecode;this.locals=null;this.freeCells=[];this.output=output}
@@ -39,11 +41,13 @@ export class VM {
         case OP.POP_CATCH:{const i=this.handlers.length-1;if(i<0)throw new GlopRuntimeError("catch handler stack underflow");this.handlers.splice(i,1);break;}
         case OP.THROW:{const error=this.pop();this.raise(error);break;}
         case OP.MAKE_ARRAY:{const count=ins.arg;if(this.stack.length<count)throw new GlopRuntimeError("stack underflow during array creation");this.stack.push(this.stack.splice(this.stack.length-count,count));break}
+        case OP.MAKE_CLASS:{const count=ins.arg;if(this.stack.length<count*2)throw new GlopRuntimeError("stack underflow during class creation");const values=this.stack.splice(this.stack.length-count*2,count*2);const methods={};for(let i=0;i<count*2;i+=2)methods[values[i]]=values[i+1];this.stack.push(new GlopClass("GLOP_CLASS",methods));break}
         case OP.MAKE_OBJECT:{const count=ins.arg;if(this.stack.length<count*2)throw new GlopRuntimeError("stack underflow during object creation");const values=this.stack.splice(this.stack.length-count*2,count*2);const obj={};for(let i=0;i<count*2;i+=2)obj[values[i]]=values[i+1];this.stack.push(obj);break}
         case OP.GET_INDEX:{const index=this.pop(),object=this.pop();if(object==null)throw new GlopRuntimeError("cannot index "+object);try{this.stack.push(object[index])}catch{throw new GlopRuntimeError("invalid index operation")}break}
         case OP.SET_INDEX:{const value=this.pop(),index=this.pop(),object=this.pop();if(object==null)throw new GlopRuntimeError("cannot index "+object);try{object[index]=value;this.stack.push(value)}catch{throw new GlopRuntimeError("invalid index assignment")}break}
         case OP.GET_MEMBER:{const key=this.pop(),object=this.pop();if(object==null)throw new GlopRuntimeError("cannot access member of "+object);this.stack.push(object[key]);break}
         case OP.SET_MEMBER:{const value=this.pop(),key=this.pop(),object=this.pop();if(object==null)throw new GlopRuntimeError("cannot set member of "+object);object[key]=value;this.stack.push(value);break}
+        case OP.NEW:{const argc=ins.arg;if(this.stack.length<argc+1)throw new GlopRuntimeError("stack underflow during NEW");const args=this.stack.splice(this.stack.length-argc,argc);const klass=this.pop();if(!(klass instanceof GlopClass))throw new GlopRuntimeError("NEW expects a CLASS");const instance=glopInstance(klass);const init=klass.methods.INIT;if(init===undefined){if(args.length)throw new GlopRuntimeError("class has no INIT constructor");this.stack.push(instance);break;}if(!(init instanceof GlopFunction))throw new GlopRuntimeError("INIT is not a WIZARD");if(args.length!==init.chunk.arity)throw new GlopRuntimeError("INIT expected "+init.chunk.arity+" argument(s), got "+args.length);this.frames.push({chunk:this.chunk,ip:this.ip,locals:this.locals,freeCells:this.freeCells,globals:this.globals,newInstance:instance});this.chunk=init.chunk;this.ip=0;this.locals=[new GlopCell(instance),...args.map(value=>new GlopCell(value))];this.freeCells=init.freeCells;this.globals=init.globals??this.globals;break}
         case OP.CALL:{
           const argc=ins.arg;if(this.stack.length<argc+1)throw new GlopRuntimeError("stack underflow during call");
           const args=this.stack.splice(this.stack.length-argc,argc);const callee=this.pop();

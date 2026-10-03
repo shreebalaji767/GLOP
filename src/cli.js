@@ -22,13 +22,25 @@ let source = "";
 
 const usage = `GLOP ${VERSION}
 
-  glop run <file.glop|file.gbc>
+  glop run [file.glop|file.gbc]
   glop repl
+  glop init [directory]
+  glop add <name> <path>
+  glop remove <name>
+  glop install
+  glop test
+  glop project
   glop compile <file.glop> [-o out.mjs]
-  glop check <file.glop>
-  glop build <file.glop> [-o out.gbc]
+  glop check [file.glop]
+  glop build [file.glop] [-o out.gbc]
+  glop fmt <file.glop> [-o out.glop]
+  glop lint <file.glop>
   glop tokens <file.glop>
-  glop dump <file.glop|file.gbc>\n  glop trace <file.glop|file.gbc>\n  glop verify <file.gbc>\n  glop inspect <file.glop|file.gbc> [--json]\n  glop debug <file.glop|file.gbc> [--break N] [--step]
+  glop dump <file.glop|file.gbc>
+  glop trace <file.glop|file.gbc>
+  glop verify <file.gbc>
+  glop inspect <file.glop|file.gbc> [--json]
+  glop debug <file.glop|file.gbc> [--break N] [--step]
   glop --version
   glop --help`;
 

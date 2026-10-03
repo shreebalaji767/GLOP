@@ -17,7 +17,7 @@ assert.match(run("GLOP a=[1,2,]\nGLOP p={name:«RAVI»,age:25,}\nYAP p.name"), /
 assert.throws(() => parse(lex("YAP BONK add(1,)")), /Expected expression for call argument|Expected expression after comma/);
 assert.throws(() => parse(lex("YAP BONK add(,1)")), /Expected expression for call argument/);
 assert.throws(() => parse(lex("YAP BONK add(1 2)")), /Expected , or \) after call argument/);
-assert.throws(() => parse(lex("YAP BONK add(BONK inner(1,2)")), /Expected , or \\) after call argument|Expected \\) after call argument/);
+assert.throws(() => parse(lex("YAP BONK add(BONK inner(1,2)")), /Expected , or \) after call argument|Expected \) after call argument/);
 assert.throws(() => parse(lex("YAP [1,,2]")), /Expected array element/);
 assert.throws(() => parse(lex("YAP {name:«RAVI»,,age:25}")), /Expected object property/);
 const deep="YAP "+"(".repeat(1100)+"1"+")".repeat(1100);
